@@ -15,6 +15,19 @@ module Context = struct
   let user_restrictions t name =
     OpamPackage.Name.Map.find_opt name t.constraints
 
+  let env t pkg v =
+    if List.mem v OpamPackageVar.predefined_depends_variables then None
+    else (
+      let r = OpamPackageVar.resolve_switch ~package:pkg t.st v in
+      if r = None then OpamConsole.warning "Unknown variable %S" (OpamVariable.Full.to_string v);
+      r
+    )
+
+  let filter_deps t pkg f =
+    f
+    |> OpamFilter.partial_filter_formula (env t pkg)
+    |> OpamFilter.filter_deps ~build:true ~post:true ~test:false ~doc:false ~dev:false ~default:false
+
   let candidates t name =
     let user_constraints = user_restrictions t name in
     match OpamPackage.Name.Map.find_opt name t.pkgs with

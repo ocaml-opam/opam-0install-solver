@@ -153,7 +153,7 @@ module Make (Context : S.CONTEXT) = struct
               let requires =
                 let make_deps importance xform get =
                   get opam
-                  |> OpamFilter.filter_deps ~build:true ~post:true ~test:false ~doc:false ~dev:false ~default:false
+                  |> Context.filter_deps context pkg
                   |> xform
                   |> list_deps ~context ~importance
                 in

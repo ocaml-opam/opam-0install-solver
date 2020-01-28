@@ -2,7 +2,7 @@ module Context = struct
   type rejection = UserConstraint of OpamFormula.atom
 
   type t = {
-    st : OpamStateTypes.unlocked OpamStateTypes.switch_state;           (* To load the JSON *)
+    st : OpamStateTypes.unlocked OpamStateTypes.switch_state;           (* To load the opam files *)
     pkgs : OpamTypes.version_set OpamTypes.name_map;                    (* All available versions *)
     constraints : OpamFormula.version_constraint OpamTypes.name_map;    (* User-provided constraints *)
   }

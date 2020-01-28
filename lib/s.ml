@@ -8,7 +8,7 @@ module type CONTEXT = sig
   val pp_rejection : rejection Fmt.t
 
   val load : t -> OpamPackage.t -> OpamFile.OPAM.t
-  (** [load t pkg] loads the JSON for [pkg]. *)
+  (** [load t pkg] loads the opam metadata for [pkg]. *)
 
   val candidates : t -> OpamPackage.Name.t -> (OpamPackage.Version.t * rejection option) list
   (** [candidates t name] is the list of available versions of [name], in order

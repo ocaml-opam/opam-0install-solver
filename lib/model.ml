@@ -126,6 +126,14 @@ module Make (Context : S.CONTEXT) = struct
   type machine_group = private string   (* We don't use machine groups because opam is source-only. *)
   let machine_group _impl = None
 
+  type conflict_class = string
+
+  let conflict_class = function
+    | RealImpl impl ->
+      OpamFile.OPAM.conflict_class impl.opam |> List.map OpamPackage.Name.to_string
+    | VirtualImpl _ -> []
+    | Dummy -> []
+
   (* Opam uses conflicts, e.g.
        conflicts if X {> 1} OR Y {< 1 OR > 2}
      whereas 0install uses restricts, e.g.

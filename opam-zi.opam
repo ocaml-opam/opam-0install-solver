@@ -19,7 +19,7 @@ dev-repo: "git+https://github.com/talex5/opam-0install-solver.git"
 doc: "https://talex5.github.io/opam-0install-solver/"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
-  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+  ["dune" "build" "-p" name "-j" jobs "./test/test.exe"] {with-test}
 ]
 depends: [
   "fmt"
@@ -27,4 +27,7 @@ depends: [
   "opam-state"
   "dune" {>= "1.11"}
   "ocaml" {>= "4.8.0"}
+  "opam-client" {with-test}
+  "opam-solver" {with-test}
+  "alcotest" {with-test}
 ]

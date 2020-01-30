@@ -21,15 +21,18 @@ let select_zi st spec =
   match r with
   | Ok sels ->
     let pkgs = Opam_zi.packages_of_result sels in
-    Some (OpamPackage.Set.of_list pkgs)
-  | Error _ -> None
+    Ok (OpamPackage.Set.of_list pkgs)
+  | Error e -> Error (lazy (Opam_zi.diagnostics e))
 
 let select_opam st spec =
   let request = OpamSolver.request ~install:spec () in
   let names = List.map fst spec |> Name.Set.of_list in
   match OpamSolution.resolve st Install ~orphans:OpamPackage.Set.empty ~requested:names request with
-  | Success s -> Some (OpamSolver.all_packages s)
-  | Conflicts _ -> None
+  | Success s -> Ok (OpamSolver.all_packages s)
+  | Conflicts c -> Error (lazy (
+      OpamCudf.string_of_conflict st.packages (OpamSwitchState.unavailable_reason st) c
+      |> String.trim
+    ))
 
 let string_of_version_opt = function
   | None -> "-"
@@ -60,21 +63,26 @@ let opam_confirms st zi_results =
                  (name, Some (`Eq, version))
                )
   in
-  select_opam st spec <> None
+  match select_opam st spec with
+  | Ok _ -> Ok ()
+  | Error (lazy e) -> Error e
 
 let compare st ~opam ~zi =
   match opam, zi with
-  | None, None -> Fmt.pr "Opam and 0install %a.@." Fmt.(styled `Green string) "agree there is no solution";
-  | None, Some zi ->
-    if opam_confirms st zi then
+  | Error _, Error _ -> Fmt.pr "Opam and 0install %a.@." Fmt.(styled `Green string) "agree there is no solution";
+  | Error _, Ok zi ->
+    begin match opam_confirms st zi with
+      | Ok () ->
       Fmt.pr "opam %a, but %a@."
         Fmt.(styled `Red string) "failed to find a solution"
         Fmt.(styled `Green string) "accepts 0install's solution as valid"
-    else
-      error "opam failed to find a solution and rejects 0install's solution"
-  | Some _, None ->
-    error "opam found a solution, but 0install didn't!"
-  | Some opam, Some zi ->
+      | Error e ->
+        let zi = OpamPackage.Set.to_seq zi |> List.of_seq |> List.map OpamPackage.to_string |> String.concat " " in
+        error "opam failed to find a solution and rejects 0install's solution:@,%s@.@.0install found: %s" e zi
+    end
+  | Ok _, Error (lazy e) ->
+    error "opam found a solution, but 0install didn't!@,%s" e
+  | Ok opam, Ok zi ->
     let module M = Name.Map in
     let map_of set =
       let m =
@@ -100,11 +108,13 @@ let compare st ~opam ~zi =
     if M.is_empty diff then (
       Fmt.pr "Opam and 0install results are %a.@." Fmt.(styled `Green string) "identical";
     ) else (
-      Fmt.pr "@[<v2>%a Opam and 0install results differ:@,%a@]"
-        Fmt.(styled `Blue string) "[NOTE]"
+      Fmt.pr "@[<v2>Opam and 0install %a:@,%a@]"
+        Fmt.(styled `Blue string) "results differ"
         pp_diff diff;
-      if not (opam_confirms st zi) then
-        error "opam rejects 0install's solution"
+      match opam_confirms st zi with
+      | Ok () -> Fmt.pr "(opam confirms 0install's selection is also valid)@."
+      | Error e ->
+        error "opam rejects 0install's solution:@,%s" e
     )
 
 let test st spec =
@@ -124,7 +134,7 @@ let test st spec =
       try fn st spec
       with OpamStd.Sys.Exit(60) ->  (* Timeout; already reported on console *)
         incr errors;
-        None
+        Error (lazy "(timeout)")
     in
     let t1 = Unix.gettimeofday () in
     (t1 -. t0, r)
@@ -146,7 +156,7 @@ let () =
   let rt = OpamRepositoryState.load `Lock_none gt in
   let st = OpamSwitchState.load_virtual gt rt in
   let t1 = Unix.gettimeofday () in
-  OpamConsole.note "Opam library initialised in %.2f s" (t1 -. t0);
+  Fmt.pr "Opam library initialised in %.2f s@." (t1 -. t0);
   (* Some reasonable fixed tests *)
   test st ["utop"; "ocaml.4.08.1"];
   test st ["irmin-git"; "ocaml.4.08.1"];

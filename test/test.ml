@@ -163,6 +163,7 @@ let () =
   test st ["dune"; "irmin.0.10.0"; "cohttp"; "git"; "ocaml.4.04.2"];
   test st ["datakit-ci"; "ocaml.4.08.1"];
   test st ["datakit-ci"; "ocaml.4.07.1"];
+  test st ["opam-core.2.0.0~rc"; "ocaml.4.09.0"];
   let available = Lazy.force st.OpamStateTypes.available_packages
                   |> OpamPackage.Set.to_seq
                   |> Seq.map OpamPackage.name

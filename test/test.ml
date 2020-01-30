@@ -133,7 +133,6 @@ let test st spec =
     let r =
       try fn st spec
       with OpamStd.Sys.Exit(60) ->  (* Timeout; already reported on console *)
-        incr errors;
         Error (lazy "(timeout)")
     in
     let t1 = Unix.gettimeofday () in
@@ -180,8 +179,8 @@ let () =
     let j = Random.int (Array.length available) in
     test st ["ocaml"; OpamPackage.Name.to_string available.(i); OpamPackage.Name.to_string available.(j)]
   done;
-  if !errors = 0 then Fmt.pr "@.All tests passed@."
+  if !errors = 0 then Fmt.pr "@.All tests %a.@." Fmt.(styled `Green string) "passed"
   else (
-    Fmt.pr "@.%a: %d error(s)@." Fmt.(styled `Red string) "Tests failed" !errors;
+    Fmt.pr "@.Tests failed: %a@." Fmt.(styled `Red (fmt "%d error(s)")) !errors;
     exit 1
   )

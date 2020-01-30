@@ -5,6 +5,7 @@ module Context = struct
     st : OpamStateTypes.unlocked OpamStateTypes.switch_state;           (* To load the opam files *)
     pkgs : OpamTypes.version_set OpamTypes.name_map;                    (* All available versions *)
     constraints : OpamFormula.version_constraint OpamTypes.name_map;    (* User-provided constraints *)
+    test : OpamPackage.Name.Set.t;
   }
 
   let load t pkg =
@@ -24,9 +25,10 @@ module Context = struct
     )
 
   let filter_deps t pkg f =
+    let test = OpamPackage.Name.Set.mem (OpamPackage.name pkg) t.test in
     f
     |> OpamFilter.partial_filter_formula (env t pkg)
-    |> OpamFilter.filter_deps ~build:true ~post:true ~test:false ~doc:false ~dev:false ~default:false
+    |> OpamFilter.filter_deps ~build:true ~post:true ~test ~doc:false ~dev:false ~default:false
 
   let candidates t name =
     let user_constraints = user_restrictions t name in
@@ -68,9 +70,9 @@ type t = Context.t
 type selections = Solver.Output.t
 type diagnostics = Input.requirements   (* So we can run another solve *)
 
-let create ~constraints st =
+let create ?(test=OpamPackage.Name.Set.empty) ~constraints st =
   let pkgs = Lazy.force st.OpamStateTypes.available_packages |> OpamPackage.to_map in
-  { Context.st; pkgs; constraints }
+  { Context.st; pkgs; constraints; test }
 
 let solve context pkgs =
   let req = requirements ~context pkgs in

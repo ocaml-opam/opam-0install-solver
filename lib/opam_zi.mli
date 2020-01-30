@@ -5,11 +5,13 @@ type selections
 type diagnostics
 
 val create :
+  ?test:OpamPackage.Name.Set.t ->
   constraints:OpamFormula.version_constraint OpamTypes.name_map ->
   OpamStateTypes.unlocked OpamStateTypes.switch_state ->
   t
 (** [create ~constraints switch] is a solver that gets candidates from [switch], filtering them
-    using [constraints]. *)
+    using [constraints].
+    @param test Packages for which we should include "with-test" dependencies. *)
 
 val solve : t -> OpamPackage.Name.t list -> (selections, diagnostics) result
 (** [solve t package_names] finds a compatible set of package versions that

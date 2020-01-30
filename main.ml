@@ -1,6 +1,6 @@
 let pp_pkg = Fmt.of_to_string OpamPackage.to_string
 
-let select = function
+let select with_test = function
   | [] -> OpamConsole.error "No packages requested!"; `Bad_arguments
   | spec ->
     let t0 = Unix.gettimeofday () in
@@ -21,8 +21,12 @@ let select = function
           | x, Some y -> Some (x, y)
         )
       |> OpamPackage.Name.Map.of_list in
-    let context = Opam_zi.create ~constraints st in
     let pkgs = List.map fst spec in
+    let test =
+      if with_test then OpamPackage.Name.Set.of_list pkgs
+      else OpamPackage.Name.Set.empty
+    in
+    let context = Opam_zi.create ~constraints ~test st in
     (* Try to find a solution: *)
     let t0 = Unix.gettimeofday () in
     let r = Opam_zi.solve context pkgs in
@@ -73,9 +77,13 @@ let atom =
 let spec =
   Arg.pos_all atom [] @@ Arg.info []
 
+let with_test =
+  let doc = "Select with-test dependencies of named packages too" in
+  Arg.(value @@ flag @@ info ["t"; "with-test"] ~doc)
+
 let cmd =
   let doc = "Select opam packages using 0install backend" in
-  Term.(const select $ Arg.value spec),
+  Term.(const select $ with_test $ Arg.value spec),
   Term.info "opam-zi" ~doc
 
 let () =

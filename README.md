@@ -1,5 +1,3 @@
-Status: **EXPERIMENTAL**
-
 # Introduction
 
 Opam's default solver is designed to maintain a set of packages over time,
@@ -11,7 +9,7 @@ In many situations (e.g. a CI system building in a clean environment, a
 project-local opam root, or a duniverse build) this is not necessary, and we
 can get a solution much faster by using a different algorithm.
 
-This package uses 0install's solver with opam packages.
+This package uses 0install's (pure OCaml) solver with opam packages.
 
 # Usage
 
@@ -46,7 +44,20 @@ opam-zi utop 'ocaml<4.09'
 
 You can also pass other packages and constraints here too, as with opam itself.
 `opam-zi` will optimise the packages in order, so `opam-zi foo bar` will always pick the
-newest possible version of `foo`, even if that means choosing an older version of `bar`.
+newest possible version of `foo`, even if that means choosing an older version of `bar`
+(but it will choose an older version of `foo` if there is no other way to get `bar` at all).
+
+# Tests
+
+Running `make test` will run various tests (some fixed and some random) using
+both opam-zi and opam's solver and compare the results.
+
+When testing changes to the code, you may want to run `dune exec -- ./test/dump.exe NN`
+before and afterwards (`NN` is the number of processes to use to speed it up;
+use the number of cores your machine has). This takes each package name in
+opam-repository and solves for it individually, generating a CSV file with the
+solutions. Depending on the speed of your computer, this is likely to take
+several minutes.
 
 # Internals
 

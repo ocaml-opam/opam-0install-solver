@@ -1,5 +1,10 @@
 module Make (Context : S.CONTEXT) = struct
-  type restriction = OpamFormula.version_formula
+  (* Note: [OpamFormula.neg] doesn't work in the [Empty] case, so we just
+     record whether to negate the result here. *)
+  type restriction = {
+    kind : [ `Ensure | `Prevent ];
+    expr : OpamFormula.version_formula;
+  }
 
   type real_role = {
     context : Context.t;
@@ -91,12 +96,7 @@ module Make (Context : S.CONTEXT) = struct
     let open OpamTypes in
     let rec aux = function
       | Empty -> []
-      | Atom (name, restriction) ->
-        let restrictions =
-          match restriction with
-          | OpamFormula.Empty -> []
-          | r -> [r]
-        in
+      | Atom (name, restrictions) ->
         let drole = role context name in
         [{ drole; restrictions; importance }]
       | Block x -> aux x
@@ -138,11 +138,25 @@ module Make (Context : S.CONTEXT) = struct
        conflicts if X {> 1} OR Y {< 1 OR > 2}
      whereas 0install uses restricts, e.g.
        restrict to X {<= 1} AND Y {>= 1 AND <= 2}
-   *)
-  let negate f =
-    let neg_version (op, v) = (OpamFormula.neg_relop op, v) in
-    let neg_atom (a, vf) = (a, OpamFormula.neg neg_version vf) in
-    OpamFormula.neg neg_atom f
+
+     Warning: [OpamFormula.neg _ Empty = Empty], so does NOT reverse the result in this case.
+     For empty conflicts this is fine (don't conflict with anything, just like an empty depends
+     list). But for the version expressions inside, it's wrong: a conflict with no expression
+     conflicts with all versions and should restrict the choice to nothing, not to everything.
+     So, we just tag the formula as [`Prevent] instead of negating it. *)
+  let prevent f =
+    OpamFormula.neg Fun.id f
+    |> OpamFormula.map (fun (a, expr) -> OpamFormula.Atom (a, [{ kind = `Prevent; expr }]))
+
+  let ensure =
+    OpamFormula.map (fun (name, vexpr) ->
+        let rlist =
+          match vexpr with
+          | OpamFormula.Empty -> []
+          | r                 -> [{ kind = `Ensure; expr = r }]
+        in
+        OpamFormula.Atom (name, rlist)
+      )
 
   (* Get all the candidates for a role. *)
   let implementations role =
@@ -165,8 +179,8 @@ module Make (Context : S.CONTEXT) = struct
                   |> xform
                   |> list_deps ~context ~importance
                 in
-                make_deps `Essential Fun.id OpamFile.OPAM.depends @
-                make_deps `Restricts negate OpamFile.OPAM.conflicts
+                make_deps `Essential ensure OpamFile.OPAM.depends @
+                make_deps `Restricts prevent OpamFile.OPAM.conflicts
               in
               Some (RealImpl { context; pkg; opam; requires })
           )
@@ -175,11 +189,15 @@ module Make (Context : S.CONTEXT) = struct
 
   let restrictions dependency = dependency.restrictions
 
-  let meets_restriction impl r =
+  let meets_restriction impl { kind; expr } =
     match impl with
     | Dummy -> true
     | VirtualImpl _ -> assert false        (* Can't constrain version of a virtual impl! *)
-    | RealImpl impl -> OpamFormula.check_version_formula r (OpamPackage.version impl.pkg)
+    | RealImpl impl ->
+      let result = OpamFormula.check_version_formula expr (OpamPackage.version impl.pkg) in
+      match kind with
+      | `Ensure -> result
+      | `Prevent -> not result
 
   type rejection = Context.rejection
 
@@ -212,7 +230,7 @@ module Make (Context : S.CONTEXT) = struct
     | Real role ->
       match Context.user_restrictions role.context role.name with
       | None -> None
-      | Some f -> Some (OpamFormula.Atom f)
+      | Some f -> Some ({ kind = `Ensure; expr = OpamFormula.Atom f })
 
   let id_of_impl = function
     | RealImpl impl -> OpamPackage.to_string impl.pkg
@@ -233,7 +251,10 @@ module Make (Context : S.CONTEXT) = struct
       Printf.sprintf "%s %s" (string_of_op rel) (OpamPackage.Version.to_string v)
     )
 
-  let string_of_restriction = string_of_version_formula
+  let string_of_restriction = function
+    | { kind = `Prevent; expr = OpamFormula.Empty } -> "conflict with all versions"
+    | { kind = `Prevent; expr } -> Fmt.strf "not(%s)" (string_of_version_formula expr)
+    | { kind = `Ensure; expr } -> string_of_version_formula expr
 
   let describe_problem _ = Fmt.to_to_string Context.pp_rejection
 

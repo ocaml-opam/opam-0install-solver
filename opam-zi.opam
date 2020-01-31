@@ -19,7 +19,7 @@ dev-repo: "git+https://github.com/talex5/opam-0install-solver.git"
 doc: "https://talex5.github.io/opam-0install-solver/"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
-  ["dune" "build" "-p" name "-j" jobs "./test/test.exe"] {with-test}
+  ["dune" "build" "-p" name "-j" jobs "./test/test.exe" "./test/dump.exe"] {with-test}
 ]
 depends: [
   "fmt"

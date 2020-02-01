@@ -55,8 +55,7 @@ let run n_cores =
   OpamStateConfig.init ();
   OpamClientConfig.opam_init ();
   OpamGlobalState.with_ `Lock_none @@ fun gt ->
-  let rt = OpamRepositoryState.load `Lock_none gt in
-  let st = OpamSwitchState.load_virtual gt rt in
+  OpamSwitchState.with_ `Lock_none gt @@ fun st ->
   let t1 = Unix.gettimeofday () in
   Fmt.pr "Opam library initialised in %.2f s@." (t1 -. t0);
   let available = Lazy.force st.OpamStateTypes.available_packages

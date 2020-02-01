@@ -70,6 +70,10 @@ You may want to use `--root` to use a separate opam root directory, e.g.
 
 This means you can upgrade your default opam root without changing the test results.
 
+To compare the results, use:
+
+    dune exec -- ./test/diff.exe baseline.csv new.csv
+
 # Internals
 
 The core 0install solver does not depend on the rest of 0install and just

@@ -119,6 +119,6 @@ let hide_deps = Arg.(value @@ flag @@ info ~docv:"NAME" ["hide-deps"])
 let cmd : unit Term.t * Term.info =
   let doc = "compare results from dump command" in
   Term.(const diff $ filter $ hide_deps $ old_csv $ new_csv),
-  Term.info "dump" ~doc
+  Term.info "diff" ~doc
 
 let () = Term.(exit @@ eval cmd)

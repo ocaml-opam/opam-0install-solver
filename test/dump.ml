@@ -3,8 +3,6 @@
 
 module Name = OpamPackage.Name
 
-let results_file = "dump.csv"
-
 let pp_pkg = Fmt.of_to_string OpamPackage.to_string
 
 let pp_result f = function
@@ -15,14 +13,12 @@ let rec waitpid_non_intr pid =
   try Unix.waitpid [] pid
   with Unix.Unix_error (Unix.EINTR, _, _) -> waitpid_non_intr pid
 
-let path proc = Printf.sprintf "dump.proc-%d.csv" proc
-
-let dump_slice ~available ~st proc start finish =
+let dump_slice ~tmpfile ~available ~st proc start finish =
   match Unix.fork () with
   | 0 -> (* We are the child *)
     begin try
         let total = finish - start in
-        let ch = open_out (path proc) in
+        let ch = open_out tmpfile in
         let f = Format.formatter_of_out_channel ch in
         let start_time = Unix.gettimeofday () in
         for i = start to finish - 1 do
@@ -46,7 +42,7 @@ let dump_slice ~available ~st proc start finish =
     end
   | child -> child
 
-let run n_cores =
+let run n_cores results_file =
   let t0 = Unix.gettimeofday () in
   let root = OpamStateConfig.opamroot () in
   OpamFormatConfig.init ();
@@ -63,37 +59,51 @@ let run n_cores =
                   |> Seq.map OpamPackage.name
                   |> Name.Set.of_seq |> Name.Set.to_seq
                   |> Array.of_seq in
+  (* let available = Array.sub available 0 100 in *)
   let pkgs_per_core = float_of_int (Array.length available) /. float_of_int n_cores |> Float.ceil |> int_of_float in
-  let rec aux acc i =
-    if i = n_cores then List.rev acc
-    else (
-      let finish = if i = n_cores - 1 then Array.length available else (i + 1) * pkgs_per_core in
-      let child = dump_slice ~available ~st i (i * pkgs_per_core) finish in
-      aux (child :: acc) (i + 1)
-    )
-  in
+  let jobs = List.init n_cores (fun i ->
+      let start = i * pkgs_per_core in
+      let finish = min (start + pkgs_per_core) (Array.length available) in
+      let tmpfile = Filename.temp_file "opam-zi-dump-" ".csv" in
+      let child = dump_slice ~tmpfile ~available ~st i (i * pkgs_per_core) finish in
+      (tmpfile, child)
+    ) in
+  let wait_for (tmpfile, c) = (tmpfile, waitpid_non_intr c) in
   let t0 = Unix.gettimeofday () in
-  let children = aux [] 0 in
-  let results = List.map waitpid_non_intr children in
+  let results = List.map wait_for jobs in
   let t1 = Unix.gettimeofday () in
-  results |> List.iteri (fun i (_pid, r) ->
+  results |> List.iteri (fun i (_, (_pid, r)) ->
       if r = Unix.WEXITED 0 then Fmt.pr "%d: OK@." i
       else Fmt.pr "%d: failed@." i
     );
   let time = t1 -. t0 in
   Fmt.pr "Finished in %.1f s (%.2f packages / second)@." time (float_of_int (Array.length available) /. time);
   let ch = open_out results_file in
-  for i = 0 to n_cores - 1 do
-    let part = open_in (path i) in
+  jobs |> List.iter (fun (tmpfile, _) ->
+    let part = open_in tmpfile in
     let len = in_channel_length part in
     let data = really_input_string part len in
     close_in part;
     output_string ch data;
-  done;
+    Unix.unlink tmpfile;
+    );
   close_out ch;
   Fmt.pr "Wrote %S@." results_file
 
-let () =
-  match Sys.argv with
-  | [| _; n_cores |] -> run (int_of_string n_cores)
-  | _ -> Fmt.epr "usage: dump n_cores@."; exit 1
+open Cmdliner
+
+let output = Arg.(required @@ (pos 0 (some string)) None @@ info ~docv:"OUTPUT.csv" [])
+
+let jobs = Arg.(required @@ (opt (some int)) None @@ info ~docv:"N" ["j"; "jobs"])
+
+let cmd =
+  let doc = "solve for every package in a repository" in
+  let man = [
+    `S Manpage.s_description;
+    `P "$(tname) performs a solve for every package name in a repository,
+        writing the results to a CSV file for analysis.";
+  ] in
+  Term.(const run $ jobs $ output),
+  Term.info "dump" ~doc ~man
+
+let () = Term.(exit @@ eval cmd)

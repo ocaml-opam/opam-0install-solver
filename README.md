@@ -52,12 +52,17 @@ newest possible version of `foo`, even if that means choosing an older version o
 Running `make test` will run various tests (some fixed and some random) using
 both opam-zi and opam's solver and compare the results.
 
-When testing changes to the code, you may want to run `dune exec -- ./test/dump.exe NN`
-before and afterwards (`NN` is the number of processes to use to speed it up;
-use the number of cores your machine has). This takes each package name in
-opam-repository and solves for it individually, generating a CSV file with the
-solutions. Depending on the speed of your computer, this is likely to take
-several minutes.
+When testing changes to the code, you may want to do:
+
+    dune exec -- ./test/dump.exe --jobs=NN baseline.csv
+    [ make changes ]
+    dune exec -- ./test/dump.exe --jobs=NN new.csv
+
+`dump.exe` takes each package name in opam-repository and solves for it
+individually, generating a CSV file with the solutions. `NN` is the number of
+processes to use to speed it up; use the number of cores your machine has.
+Depending on the speed of your computer, this is likely to take several
+minutes.
 
 # Internals
 

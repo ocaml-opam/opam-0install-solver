@@ -57,7 +57,7 @@ let pp_version_diff f (name, (a, b)) =
       pp_version b
   | None, None -> assert false
 
-let pp_diff f (name, diff) =
+let pp_diff ~hide_deps f (name, diff) =
   match diff with
   | Error `Not_present, _ -> styled f `Green "%a: package added"     pp_name name
   | _, Error `Not_present -> styled f `Red   "%a: package removed"   pp_name name
@@ -71,6 +71,8 @@ let pp_diff f (name, diff) =
       styled f `Green "%a: %a -> %a" pp_name name pp_version v1 pp_version v2
     else if d > 0 then
       styled f `Red   "%a: %a -> %a" pp_name name pp_version v1 pp_version v2
+    else if hide_deps then
+      Fmt.pf f "%a: (only changes in dependencies)" pp_name name
     else (
       let diff =
         Name.Map.merge (fun _ a b ->
@@ -89,7 +91,7 @@ let result_equal a b =
   | Ok a, Ok b -> Name.Map.equal (fun a b -> Version.compare a b = 0) a b
   | _ -> a = b
 
-let diff filter a b =
+let diff filter hide_deps a b =
   let filter = Name.Set.of_list (List.map Name.of_string filter) in
   let a = parse ~filter a in
   let b = parse ~filter b in
@@ -104,7 +106,7 @@ let diff filter a b =
     Fmt.pr "No differences.@."
   else (
     diff |> Name.Map.iter @@ fun name diff ->
-    Fmt.pr "%a@." pp_diff (name, diff)
+    Fmt.pr "%a@." (pp_diff ~hide_deps) (name, diff)
   )
 
 open Cmdliner
@@ -112,10 +114,11 @@ open Cmdliner
 let old_csv = Arg.(required @@ (pos 0 (some file)) None @@ info ~docv:"OLD.csv" [])
 let new_csv = Arg.(required @@ (pos 1 (some file)) None @@ info ~docv:"NEW.csv" [])
 let filter = Arg.(value @@ (opt (list string)) [] @@ info ~docv:"NAME" ["ignore"])
+let hide_deps = Arg.(value @@ flag @@ info ~docv:"NAME" ["hide-deps"])
 
 let cmd : unit Term.t * Term.info =
   let doc = "compare results from dump command" in
-  Term.(const diff $ filter $ old_csv $ new_csv),
+  Term.(const diff $ filter $ hide_deps $ old_csv $ new_csv),
   Term.info "dump" ~doc
 
 let () = Term.(exit @@ eval cmd)

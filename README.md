@@ -64,6 +64,12 @@ processes to use to speed it up; use the number of cores your machine has.
 Depending on the speed of your computer, this is likely to take several
 minutes.
 
+You may want to use `--root` to use a separate opam root directory, e.g.
+
+    opam init --no-setup --root ./opam-root /path/to/opam-repository
+
+This means you can upgrade your default opam root without changing the test results.
+
 # Internals
 
 The core 0install solver does not depend on the rest of 0install and just

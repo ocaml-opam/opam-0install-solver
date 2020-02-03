@@ -42,9 +42,10 @@ let dump_slice ~tmpfile ~available ~st proc start finish =
     end
   | child -> child
 
-let run n_cores results_file =
+let run n_cores root_dir results_file =
+  let root_dir = Stdlib.Option.map OpamFilename.Dir.of_string root_dir in
   let t0 = Unix.gettimeofday () in
-  let root = OpamStateConfig.opamroot () in
+  let root = OpamStateConfig.opamroot ?root_dir () in
   OpamFormatConfig.init ();
   ignore (OpamStateConfig.load_defaults root);
   OpamStd.Config.init ();
@@ -96,14 +97,16 @@ let output = Arg.(required @@ (pos 0 (some string)) None @@ info ~docv:"OUTPUT.c
 
 let jobs = Arg.(required @@ (opt (some int)) None @@ info ~docv:"N" ["j"; "jobs"])
 
-let cmd =
+let root_dir = Arg.(value @@ (opt (some dir)) None @@ info ~docv:"DIR" ["root"])
+
+let cmd : unit Term.t * Term.info =
   let doc = "solve for every package in a repository" in
   let man = [
     `S Manpage.s_description;
     `P "$(tname) performs a solve for every package name in a repository,
         writing the results to a CSV file for analysis.";
   ] in
-  Term.(const run $ jobs $ output),
+  Term.(const run $ jobs $ root_dir $ output),
   Term.info "dump" ~doc ~man
 
 let () = Term.(exit @@ eval cmd)

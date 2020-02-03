@@ -1,6 +1,6 @@
 let pp_pkg = Fmt.of_to_string OpamPackage.to_string
 
-let select with_test = function
+let select verbose with_test = function
   | [] -> OpamConsole.error "No packages requested!"; `Bad_arguments
   | spec ->
     let t0 = Unix.gettimeofday () in
@@ -38,7 +38,7 @@ let select with_test = function
       `Success
     | Error problem ->
       OpamConsole.error "No solution";
-      print_endline (Opam_zi.diagnostics problem);
+      print_endline (Opam_zi.diagnostics ~verbose problem);
       OpamConsole.note "Eliminated all possibilities in %.2f s" (t1 -. t0);
       `No_solution
 
@@ -81,9 +81,13 @@ let with_test =
   let doc = "Select with-test dependencies of named packages too" in
   Arg.(value @@ flag @@ info ["t"; "with-test"] ~doc)
 
+let verbose =
+  let doc = "Show more details in the diagnostics." in
+  Arg.(value @@ flag @@ info ["verbose"] ~doc)
+
 let cmd =
   let doc = "Select opam packages using 0install backend" in
-  Term.(const select $ with_test $ Arg.value spec),
+  Term.(const select $ verbose $ with_test $ Arg.value spec),
   Term.info "opam-zi" ~doc
 
 let () =

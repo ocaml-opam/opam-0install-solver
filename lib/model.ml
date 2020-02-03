@@ -101,12 +101,15 @@ module Make (Context : S.CONTEXT) = struct
         [{ drole; restrictions; importance }]
       | Block x -> aux x
       | And (x, y) -> aux x @ aux y
-      | Or (x, y) ->
-        let virt z = VirtualImpl (fresh_id (), aux z) in
-        let drole = virtual_role [ virt x; virt y ] in
+      | Or _ as o ->
+        let impls = group_ors o in
+        let drole = virtual_role impls in
         (* Essential because we must apply a restriction, even if its
            components are only restrictions. *)
         [{ drole; restrictions = []; importance = `Essential }]
+    and group_ors = function
+      | Or (x, y) -> group_ors x @ group_ors y
+      | expr -> [VirtualImpl (fresh_id (), aux expr)]
     in
     aux deps
 

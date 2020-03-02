@@ -1,3 +1,4 @@
+module Solver = Opam_0install.Solver.Make(Opam_0install.Switch_context)
 module Name = OpamPackage.Name
 module Version = OpamPackage.Version
 
@@ -15,14 +16,14 @@ let select_zi st spec =
         | x, Some y -> Some (x, y)
       )
     |> Name.Map.of_list in
-  let context = Opam_zi.create ~constraints st in
+  let context = Opam_0install.Switch_context.create ~constraints st in
   let pkgs = List.map fst spec in
-  let r = Opam_zi.solve context pkgs in
+  let r = Solver.solve context pkgs in
   match r with
   | Ok sels ->
-    let pkgs = Opam_zi.packages_of_result sels in
+    let pkgs = Solver.packages_of_result sels in
     Ok (OpamPackage.Set.of_list pkgs)
-  | Error e -> Error (lazy (Opam_zi.diagnostics e))
+  | Error e -> Error (lazy (Solver.diagnostics e))
 
 let select_opam st spec =
   let request = OpamSolver.request ~install:spec () in

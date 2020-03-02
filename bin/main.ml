@@ -1,3 +1,5 @@
+module Solver = Opam_0install.Solver.Make(Opam_0install.Switch_context)
+
 let pp_pkg = Fmt.of_to_string OpamPackage.to_string
 
 let select verbose with_test = function
@@ -26,19 +28,19 @@ let select verbose with_test = function
       if with_test then OpamPackage.Name.Set.of_list pkgs
       else OpamPackage.Name.Set.empty
     in
-    let context = Opam_zi.create ~constraints ~test st in
+    let context = Opam_0install.Switch_context.create ~constraints ~test st in
     (* Try to find a solution: *)
     let t0 = Unix.gettimeofday () in
-    let r = Opam_zi.solve context pkgs in
+    let r = Solver.solve context pkgs in
     let t1 = Unix.gettimeofday () in
     match r with
     | Ok sels ->
-      Fmt.pr "%a@." Fmt.(list ~sep:(unit " ") pp_pkg) (Opam_zi.packages_of_result sels);
+      Fmt.pr "%a@." Fmt.(list ~sep:(unit " ") pp_pkg) (Solver.packages_of_result sels);
       OpamConsole.note "Solve took %.2f s" (t1 -. t0);
       `Success
     | Error problem ->
       OpamConsole.error "No solution";
-      print_endline (Opam_zi.diagnostics ~verbose problem);
+      print_endline (Solver.diagnostics ~verbose problem);
       OpamConsole.note "Eliminated all possibilities in %.2f s" (t1 -. t0);
       `No_solution
 
@@ -88,7 +90,7 @@ let verbose =
 let cmd =
   let doc = "Select opam packages using 0install backend" in
   Term.(const select $ verbose $ with_test $ Arg.value spec),
-  Term.info "opam-zi" ~doc
+  Term.info "opam-0install" ~doc
 
 let () =
   match Term.eval cmd with

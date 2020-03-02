@@ -1,12 +1,13 @@
 (* For every package name in the opam repository, solve for that package and
    collect the results in a CSV file. *)
 
+module Solver = Opam_0install.Solver.Make(Opam_0install.Switch_context)
 module Name = OpamPackage.Name
 
 let pp_pkg = Fmt.of_to_string OpamPackage.to_string
 
 let pp_result f = function
-  | Ok sels -> Fmt.pf f "%a" Fmt.(list ~sep:(unit " ") pp_pkg) (Opam_zi.packages_of_result sels)
+  | Ok sels -> Fmt.pf f "%a" Fmt.(list ~sep:(unit " ") pp_pkg) (Solver.packages_of_result sels)
   | Error _ -> Fmt.pf f "NO-SOLUTION"
 
 let rec waitpid_non_intr pid =
@@ -26,9 +27,9 @@ let dump_slice ~tmpfile ~available ~st proc start finish =
           if off mod 10 = 0 then Fmt.pr "Process %d completed %d/%d packages@." proc off total;
           let name = available.(i) in
           let constraints = OpamPackage.Name.Map.empty in
-          let context = Opam_zi.create ~constraints st in
+          let context = Opam_0install.Switch_context.create ~constraints st in
           let t0 = Unix.gettimeofday () in
-          let r = Opam_zi.solve context [name] in
+          let r = Solver.solve context [name] in
           let t1 = Unix.gettimeofday () in
           Fmt.pf f "%s, %.4f, %a@." (OpamPackage.Name.to_string name) (t1 -. t0) pp_result r
         done;
@@ -60,7 +61,7 @@ let run n_cores root_dir results_file =
   let jobs = List.init n_cores (fun i ->
       let start = i * pkgs_per_core in
       let finish = min (start + pkgs_per_core) (Array.length available) in
-      let tmpfile = Filename.temp_file "opam-zi-dump-" ".csv" in
+      let tmpfile = Filename.temp_file "opam-0install-dump-" ".csv" in
       let child = dump_slice ~tmpfile ~available ~st i (i * pkgs_per_core) finish in
       (tmpfile, child)
     ) in

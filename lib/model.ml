@@ -30,13 +30,13 @@ module Make (Context : S.CONTEXT) = struct
     | VirtualImpl of int * dependency list      (* (int just for sorting) *)
     | Dummy                                     (* Used for diagnostics *)
 
-  let rec format_version = function
-    | RealImpl impl -> OpamPackage.Version.to_string (OpamPackage.version impl.pkg)
-    | VirtualImpl (_i, deps) -> String.concat "&" (List.map (fun d -> Fmt.to_to_string pp_role d.drole) deps)
-    | Dummy -> "(no version)"
+  let rec pp_version f = function
+    | RealImpl impl -> Fmt.string f @@ OpamPackage.Version.to_string (OpamPackage.version impl.pkg)
+    | VirtualImpl (_i, deps) -> Fmt.(list ~sep:(unit "&") pp_role) f (List.map (fun d -> d.drole) deps)
+    | Dummy -> Fmt.string f "(no version)"
   and pp_impl f = function
     | RealImpl impl -> Fmt.string f (OpamPackage.to_string impl.pkg)
-    | VirtualImpl _ as x -> Fmt.string f (format_version x)
+    | VirtualImpl _ as x -> pp_version f x
     | Dummy -> Fmt.string f "(no solution found)"
   and pp_role f = function
     | Real t -> Fmt.string f (OpamPackage.Name.to_string t.name)
@@ -235,10 +235,7 @@ module Make (Context : S.CONTEXT) = struct
       | None -> None
       | Some f -> Some ({ kind = `Ensure; expr = OpamFormula.Atom f })
 
-  let id_of_impl = function
-    | RealImpl impl -> OpamPackage.to_string impl.pkg
-    | VirtualImpl _ -> "virtual"
-    | Dummy -> "-"
+  let pp_impl_long = pp_impl
 
   let format_machine _impl = "(src)"
 

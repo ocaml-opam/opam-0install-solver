@@ -27,6 +27,7 @@ depends: [
   "opam-state"
   "dune" {>= "1.11"}
   "ocaml" {>= "4.8.0"}
+  "0install-solver"
   "opam-client" {with-test}
   "opam-solver" {with-test}
   "astring" {with-test}

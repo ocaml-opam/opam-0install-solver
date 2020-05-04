@@ -1,3 +1,3 @@
 (library
  (name opam_zi)
- (libraries opam-state zeroinstall_solver fmt))
+ (libraries opam-state 0install-solver fmt))

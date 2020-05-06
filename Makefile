@@ -1,7 +1,7 @@
 .PHONY: all build-tests test
 
 all:
-	dune build ./main.exe
+	dune build
 
 build-tests:
 	dune build ./test/test.exe ./test/dump.exe

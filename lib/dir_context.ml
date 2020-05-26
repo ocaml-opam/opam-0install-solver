@@ -63,14 +63,15 @@ let candidates t name =
   match OpamPackage.Name.Map.find_opt name t.pins with
   | Some (version, _) -> [version, None]
   | None ->
-    match list_dir (t.packages_dir / OpamPackage.Name.to_string name) with
+    let versions_dir = t.packages_dir / OpamPackage.Name.to_string name in
+    match list_dir versions_dir with
     | versions ->
       let user_constraints = user_restrictions t name in
       versions
       |> List.filter_map (fun dir ->
           match OpamPackage.of_string_opt dir with
-          | Some pkg -> Some (OpamPackage.version pkg)
-          | None -> None
+          | Some pkg when Sys.file_exists (versions_dir / dir / "opam") -> Some (OpamPackage.version pkg)
+          | _ -> None
         )
       |> List.sort (fun a b -> OpamPackage.Version.compare b a)
       |> List.map (fun v ->

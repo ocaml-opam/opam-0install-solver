@@ -9,7 +9,8 @@ In many situations (e.g. a CI system building in a clean environment, a
 project-local opam root, or a duniverse build) this is not necessary, and we
 can get a solution much faster by using a different algorithm.
 
-This package uses 0install's (pure OCaml) solver with opam packages.
+This package does that by using 0install's (pure OCaml) solver with opam
+packages.
 
 # Usage
 
@@ -22,7 +23,9 @@ base-bigarray.base base-bytes.base base-threads.base base-unix.base camomile.1.0
 [NOTE] Solve took 0.25 s
 ```
 
-It outputs the set of packages that should be installed (but doesn't install them itself).
+Note: the first run may be slow, as the opam library it uses may decide to rebuild its index first.
+
+`opam-0install` outputs the set of packages that should be installed (but doesn't install them itself).
 The output is in a format suitable for use as input to `opam`. e.g.
 
 ```bash
@@ -74,39 +77,58 @@ To compare the results, use:
 
     dune exec -- ./test/diff.exe baseline.csv new.csv
 
+# API
+
+The library provides these sub-modules under `Opam_0install`:
+
+- `Solver` is used to create a solver, given an `S.CONTEXT` (source of opam packages).
+- `Switch_context` gets packages from the user's opam switch, including any pinned packages.
+- `Dir_context` reads the packages directly from a checkout of `opam-repository`.
+- `Model` is used internally by `Solver`. It provides the interface needed by 0install.
+
+Example:
+
+```ocaml
+let env =
+  Opam_0install.Dir_context.std_env
+    ~arch:"x86_64"
+    ~os:"linux"
+    ~os_family:"debian"
+    ~os_distribution:"debian"
+    ~os_version:"10"
+
+let context =
+  Opam_0install.Dir_context.create "/tmp/opam-repository/packages"
+    ~constraints:OpamPackage.Name.Map.empty
+    ~env
+
+module Solver = Opam_0install.Solver.Make(Opam_0install.Dir_context)
+
+let () =
+  let result = Solver.solve context [OpamPackage.Name.of_string "utop"] in
+  match result with
+  | Error e -> print_endline (Solver.diagnostics e)
+  | Ok selections ->
+    Solver.packages_of_result selections
+    |> List.iter (fun pkg -> Printf.printf "- %s\n" (OpamPackage.to_string pkg))
+```
+
 # Internals
 
 The core 0install solver does not depend on the rest of 0install and just
 provides a functor that can be instantiated with whatever package system you
-like (see [Simplifying the Solver With Functors][]).
+like (see [Simplifying the Solver With Functors][]). [Zeroinstall_solver.S][]
+describes the interface required by the `0install-solver` package.
 
-- The `zi-solver` directory contains a copy of 0install's `solver` directory.
-- The `lib` directory applies this to opam.
-
-`zi-solver/s.ml` describes the interface required by `zi-solver`.
-`lib/model.ml` maps opam concepts onto 0install ones. It's a little
-complicated because 0install doesn't support alternatives in dependencies (e.g.
-`ocaml-config` depends on `"ocaml-base-compiler" | "ocaml-variants" |
-"ocaml-system"`). The mapping introduces a "virtual" package in these cases
-(so `ocaml-config` depends on a virtual package that has three available versions,
-with dependencies on the real packages).
+`opam-0install` provides an implementation of this interface using opam package
+metadata. It's a little complicated because 0install doesn't support
+alternatives in dependencies (e.g. `ocaml-config` depends on
+`"ocaml-base-compiler" | "ocaml-variants" | "ocaml-system"`). The mapping
+introduces a "virtual" package in these cases (so `ocaml-config` depends on a
+virtual package that has three available versions, with dependencies on the
+real packages).
 
 A virtual package is also created if you specify multiple packages on the command-line.
 
-# License
-
-This library is free software; you can redistribute it and/or
-modify it under the terms of the GNU Lesser General Public
-License as published by the Free Software Foundation; either
-version 2.1 of the License, or (at your option) any later version.
-
-This library is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public
-License along with this library; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
-
+[Zeroinstall_solver.S]: https://0install.github.io/0install/0install-solver/Zeroinstall_solver/S/index.html
 [Simplifying the Solver With Functors]: https://roscidus.com/blog/blog/2014/09/17/simplifying-the-solver-with-functors/

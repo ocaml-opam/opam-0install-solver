@@ -21,7 +21,7 @@ module Context = struct
     let user_constraints = user_restrictions t name in
     match Cudf.lookup_packages t.universe name with
     | [] ->
-        OpamConsole.log "opam-zi" "Package %S not found!" name;
+        OpamConsole.log "opam-0install-cudf" "Package %S not found!" name;
         []
     | versions ->
         List.fast_sort (fun pkg1 pkg2 -> compare (pkg2.Cudf.version : int) pkg1.Cudf.version) versions

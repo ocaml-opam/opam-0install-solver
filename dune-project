@@ -33,3 +33,26 @@ This package uses 0install's solver algorithm with opam packages.
   (opam-solver :with-test)
   (astring :with-test)
   (alcotest :with-test)))
+
+(package
+ (name opam-0install-cudf)
+ (synopsis "Opam solver using 0install backend using the CUDF interface")
+ (description "\
+Opam's default solver is designed to maintain a set of packages
+over time, minimising disruption when installing new programs and
+finding a compromise solution across all packages.
+
+In many situations (e.g. CI, local roots or duniverse builds) this
+is not necessary, and we can get a solution much faster by using
+a different algorithm.
+
+This package uses 0install's solver algorithm with opam packages using
+the CUDF interface.
+")
+ (depends
+  fmt
+  cmdliner
+  opam-state
+  cudf
+  (ocaml (>= 4.08.0))
+  0install-solver))

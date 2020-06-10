@@ -1,3 +1,5 @@
+(* Note: changes to this file may require similar changes to lib-cudf/model.ml *)
+
 module Make (Context : S.CONTEXT) = struct
   (* Note: [OpamFormula.neg] doesn't work in the [Empty] case, so we just
      record whether to negate the result here. *)
@@ -42,6 +44,8 @@ module Make (Context : S.CONTEXT) = struct
     | Real t -> Fmt.string f (OpamPackage.Name.to_string t.name)
     | Virtual (_, impls) -> Fmt.pf f "%a" Fmt.(list ~sep:(unit "|") pp_impl) impls
 
+  let pp_impl_long = pp_impl
+
   module Role = struct
     type t = role
 
@@ -50,8 +54,9 @@ module Make (Context : S.CONTEXT) = struct
     let compare a b =
       match a, b with
       | Real a , Real b -> OpamPackage.Name.compare a.name b.name
-      | Virtual (ia, _), Virtual (ib, _) -> compare ia ib
-      | _, _ -> compare a b
+      | Virtual (a, _), Virtual (b, _) -> compare (a : int) b
+      | Real _, Virtual _ -> -1
+      | Virtual _, Real _ -> 1
   end
 
   let role context name = Real { context; name }
@@ -162,8 +167,7 @@ module Make (Context : S.CONTEXT) = struct
       )
 
   (* Get all the candidates for a role. *)
-  let implementations role =
-    match role with
+  let implementations = function
     | Virtual (_, impls) -> { impls; replacement = None }
     | Real role ->
       let context = role.context in
@@ -225,7 +229,7 @@ module Make (Context : S.CONTEXT) = struct
   let compare_version a b =
     match a, b with
     | RealImpl a, RealImpl b -> OpamPackage.compare a.pkg b.pkg
-    | VirtualImpl (ia, _), VirtualImpl (ib, _) -> compare ia ib
+    | VirtualImpl (ia, _), VirtualImpl (ib, _) -> compare (ia : int) ib
     | a, b -> compare a b
 
   let user_restrictions = function
@@ -233,9 +237,7 @@ module Make (Context : S.CONTEXT) = struct
     | Real role ->
       match Context.user_restrictions role.context role.name with
       | None -> None
-      | Some f -> Some ({ kind = `Ensure; expr = OpamFormula.Atom f })
-
-  let pp_impl_long = pp_impl
+      | Some f -> Some { kind = `Ensure; expr = OpamFormula.Atom f }
 
   let format_machine _impl = "(src)"
 
@@ -247,7 +249,7 @@ module Make (Context : S.CONTEXT) = struct
     | `Lt -> "<"
     | `Neq -> "<>"
 
-  let string_of_version_formula = OpamFormula.string_of_formula (function (rel, v) ->
+  let string_of_version_formula = OpamFormula.string_of_formula (fun (rel, v) ->
       Printf.sprintf "%s %s" (string_of_op rel) (OpamPackage.Version.to_string v)
     )
 
@@ -256,7 +258,7 @@ module Make (Context : S.CONTEXT) = struct
     | { kind = `Prevent; expr } -> Fmt.strf "not(%s)" (string_of_version_formula expr)
     | { kind = `Ensure; expr } -> string_of_version_formula expr
 
-  let describe_problem _ = Fmt.to_to_string Context.pp_rejection
+  let describe_problem _impl = Fmt.to_to_string Context.pp_rejection
 
   let version = function
     | RealImpl impl -> Some impl.pkg

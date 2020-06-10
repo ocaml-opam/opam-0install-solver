@@ -1,5 +1,3 @@
-val fop : Cudf_types.relop -> int -> int -> bool
-
 (** This module maps between the opam and 0install concepts. Roughly:
 
     - An opam package name is a 0install role.
@@ -15,6 +13,8 @@ val fop : Cudf_types.relop -> int -> int -> bool
     Dependencies on alternatives (e.g. "ocaml-base-compiler | ocaml-variants")
     become a dependency on a virtual package which has each choice as an
     implementation. *)
+
+val fop : Cudf_types.relop -> int -> int -> bool
 
 module Make (Context : S.CONTEXT) : sig
   include Zeroinstall_solver.S.SOLVER_INPUT

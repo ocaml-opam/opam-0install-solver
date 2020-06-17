@@ -61,7 +61,7 @@ let filter_deps t pkg f =
 
 let candidates t name =
   match OpamPackage.Name.Map.find_opt name t.pins with
-  | Some (version, _) -> [version, None]
+  | Some (version, opam) -> [version, Ok opam]
   | None ->
     let versions_dir = t.packages_dir / OpamPackage.Name.to_string name in
     match list_dir versions_dir with
@@ -77,8 +77,10 @@ let candidates t name =
       |> List.map (fun v ->
           match user_constraints with
           | Some test when not (OpamFormula.check_version_formula (OpamFormula.Atom test) v) ->
-            v, Some (UserConstraint (name, Some test))  (* Reject *)
-          | _ -> v, None
+            v, Error (UserConstraint (name, Some test))
+          | _ ->
+            let opam = load t (OpamPackage.create name v) in
+            v, Ok opam
         )
     | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
       OpamConsole.log "opam-0install" "Package %S not found!" (OpamPackage.Name.to_string name);

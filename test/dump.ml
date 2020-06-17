@@ -1,6 +1,33 @@
 (* For every package name in the opam repository, solve for that package and
    collect the results in a CSV file. *)
 
+(*
+module Cached_dir_context = struct
+  include Opam_0install.Dir_context
+
+  let cache = Hashtbl.create 10000
+
+  let candidates t name =
+    match Hashtbl.find_opt cache name with
+    | Some x -> x
+    | None ->
+      let r = candidates t name in
+      Hashtbl.add cache name r;
+      r
+end
+
+let env =
+  Opam_0install.Dir_context.std_env
+    ~arch:"x86_64"
+    ~os:"linux"
+    ~os_family:"debian"
+    ~os_distribution:"debian"
+    ~os_version:"10"
+    ()
+
+module Solver = Opam_0install.Solver.Make(Cached_dir_context)
+*)
+
 module Solver = Opam_0install.Solver.Make(Opam_0install.Switch_context)
 module Name = OpamPackage.Name
 
@@ -28,6 +55,7 @@ let dump_slice ~tmpfile ~available ~st proc start finish =
           let name = available.(i) in
           let constraints = OpamPackage.Name.Map.empty in
           let context = Opam_0install.Switch_context.create ~constraints st in
+          (* let context = Opam_0install.Dir_context.create ~constraints ~env "/tmp/opam-repository/packages" in *)
           let t0 = Unix.gettimeofday () in
           let r = Solver.solve context [name] in
           let t1 = Unix.gettimeofday () in

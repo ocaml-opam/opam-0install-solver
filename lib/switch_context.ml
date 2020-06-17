@@ -42,6 +42,7 @@ let candidates t name =
           v, Error (UserConstraint (name, Some test))
         | _ ->
           let opam = load t (OpamPackage.create name v) in
+          (* Note: [OpamStateTypes.available_packages] filters out unavailable packages for us. *)
           v, Ok opam
       )
   | None ->

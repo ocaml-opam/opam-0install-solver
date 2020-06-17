@@ -6,11 +6,14 @@
 include S.CONTEXT
 
 val std_env :
+  ?ocaml_native:bool ->
+  ?sys_ocaml_version:string ->
   arch:string ->
   os:string ->
   os_distribution:string ->
   os_family:string ->
   os_version:string ->
+  unit ->
   (string -> OpamVariable.variable_contents option)
 (** [std_env ~arch ~os ~os_distribution ~os_family ~os_version] is an
     environment function that returns the given values for the standard opam

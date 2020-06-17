@@ -11,7 +11,8 @@ module type CONTEXT = sig
   (** [candidates t name] is the list of available versions of [name], in order
       of decreasing preference. If the user or environment provides additional
       constraints that mean a version should be rejected, include that here too. Rejects
-      are only used for generating diagnostics reports. *)
+      are only used for generating diagnostics reports. Candidates whose "availablity" field
+      isn't satisfied must be rejected here. *)
 
   val user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option
   (** [user_restrictions t pkg] is the user's constraint on [pkg], if any. This is just

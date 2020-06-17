@@ -1,25 +1,30 @@
-(* Note: changes to this file may require similar changes to lib-cudf/model.ml *)
+(* Note: changes to this file may require similar changes to lib/model.ml *)
+
+let fop : Cudf_types.relop -> int -> int -> bool = function
+  | `Eq -> (=)
+  | `Neq -> (<>)
+  | `Geq -> (>=)
+  | `Gt -> (>)
+  | `Leq -> (<=)
+  | `Lt -> (<)
 
 module Make (Context : S.CONTEXT) = struct
-  (* Note: [OpamFormula.neg] doesn't work in the [Empty] case, so we just
-     record whether to negate the result here. *)
   type restriction = {
     kind : [ `Ensure | `Prevent ];
-    expr : OpamFormula.version_formula;
+    expr : (Cudf_types.relop * Cudf_types.version) list; (* TODO: might not be a list *)
+    (* NOTE: each list is a raw or the list is an OR case (see Cudf_types.vpkgforula) *)
   }
 
   type real_role = {
     context : Context.t;
-    name : OpamPackage.Name.t;
+    name : Cudf_types.pkgname;
   }
 
   type role =
     | Real of real_role               (* A role is usually an opam package name *)
     | Virtual of int * impl list      (* (int just for sorting) *)
   and real_impl = {
-    context : Context.t;
-    pkg : OpamPackage.t;
-    opam : OpamFile.OPAM.t;
+    pkg : Cudf.package;
     requires : dependency list;
   }
   and dependency = {
@@ -33,18 +38,21 @@ module Make (Context : S.CONTEXT) = struct
     | Dummy                                     (* Used for diagnostics *)
 
   let rec pp_version f = function
-    | RealImpl impl -> Fmt.string f @@ OpamPackage.Version.to_string (OpamPackage.version impl.pkg)
-    | VirtualImpl (_i, deps) -> Fmt.(list ~sep:(unit "&") pp_role) f (List.map (fun d -> d.drole) deps)
+    | RealImpl impl -> Fmt.int f impl.pkg.Cudf.version
+    | VirtualImpl (_i, deps) -> Fmt.string f (String.concat "&" (List.map (fun d -> Fmt.to_to_string pp_role d.drole) deps))
     | Dummy -> Fmt.string f "(no version)"
   and pp_impl f = function
-    | RealImpl impl -> Fmt.string f (OpamPackage.to_string impl.pkg)
+    | RealImpl impl -> Fmt.string f impl.pkg.Cudf.package
     | VirtualImpl _ as x -> pp_version f x
     | Dummy -> Fmt.string f "(no solution found)"
   and pp_role f = function
-    | Real t -> Fmt.string f (OpamPackage.Name.to_string t.name)
+    | Real t -> Fmt.string f t.name
     | Virtual (_, impls) -> Fmt.pf f "%a" Fmt.(list ~sep:(unit "|") pp_impl) impls
 
-  let pp_impl_long = pp_impl
+  let pp_impl_long fmt = function
+    | RealImpl impl -> Fmt.pf fmt "%s.%d" impl.pkg.Cudf.package impl.pkg.Cudf.version
+    | VirtualImpl _ as x -> pp_version fmt x
+    | Dummy -> Fmt.string fmt "(no solution found)"
 
   module Role = struct
     type t = role
@@ -53,7 +61,7 @@ module Make (Context : S.CONTEXT) = struct
 
     let compare a b =
       match a, b with
-      | Real a , Real b -> OpamPackage.Name.compare a.name b.name
+      | Real a, Real b -> String.compare a.name b.name
       | Virtual (a, _), Virtual (b, _) -> compare (a : int) b
       | Real _, Virtual _ -> -1
       | Virtual _, Real _ -> 1
@@ -96,25 +104,28 @@ module Make (Context : S.CONTEXT) = struct
 
   let dummy_impl = Dummy
 
-  (* Turn an opam dependency formula into a 0install list of dependencies. *)
-  let list_deps ~context ~importance deps =
-    let open OpamTypes in
+  let list_deps ~context ~importance ~kind deps =
     let rec aux = function
-      | Empty -> []
-      | Atom (name, restrictions) ->
+      | [[(name, constr)]] ->
         let drole = role context name in
+        let restrictions =
+          match constr with
+          | None -> []
+          | Some c -> [{kind; expr = [c]}]
+        in
         [{ drole; restrictions; importance }]
-      | Block x -> aux x
-      | And (x, y) -> aux x @ aux y
-      | Or _ as o ->
+      | [o] ->
         let impls = group_ors o in
         let drole = virtual_role impls in
         (* Essential because we must apply a restriction, even if its
            components are only restrictions. *)
         [{ drole; restrictions = []; importance = `Essential }]
+      | x::y -> aux [x] @ aux y
+      | [] -> []
     and group_ors = function
-      | Or (x, y) -> group_ors x @ group_ors y
-      | expr -> [VirtualImpl (fresh_id (), aux expr)]
+      | [expr] -> [VirtualImpl (fresh_id (), aux [[expr]])]
+      | x::y -> group_ors [x] @ group_ors y
+      | [] -> assert false (* TODO: implement false *)
     in
     aux deps
 
@@ -134,39 +145,13 @@ module Make (Context : S.CONTEXT) = struct
   type machine_group = private string   (* We don't use machine groups because opam is source-only. *)
   let machine_group _impl = None
 
-  type conflict_class = string
+  type conflict_class = private string
+  let conflict_class _impl = []
 
-  let conflict_class = function
-    | RealImpl impl ->
-      OpamFile.OPAM.conflict_class impl.opam |> List.map OpamPackage.Name.to_string
-    | VirtualImpl _ -> []
-    | Dummy -> []
+  let ensure l = l
 
-  (* Opam uses conflicts, e.g.
-       conflicts if X {> 1} OR Y {< 1 OR > 2}
-     whereas 0install uses restricts, e.g.
-       restrict to X {<= 1} AND Y {>= 1 AND <= 2}
+  let prevent l = List.map (fun x -> [x]) l
 
-     Warning: [OpamFormula.neg _ Empty = Empty], so does NOT reverse the result in this case.
-     For empty conflicts this is fine (don't conflict with anything, just like an empty depends
-     list). But for the version expressions inside, it's wrong: a conflict with no expression
-     conflicts with all versions and should restrict the choice to nothing, not to everything.
-     So, we just tag the formula as [`Prevent] instead of negating it. *)
-  let prevent f =
-    OpamFormula.neg Fun.id f
-    |> OpamFormula.map (fun (a, expr) -> OpamFormula.Atom (a, [{ kind = `Prevent; expr }]))
-
-  let ensure =
-    OpamFormula.map (fun (name, vexpr) ->
-        let rlist =
-          match vexpr with
-          | OpamFormula.Empty -> []
-          | r                 -> [{ kind = `Ensure; expr = r }]
-        in
-        OpamFormula.Atom (name, rlist)
-      )
-
-  (* Get all the candidates for a role. *)
   let implementations = function
     | Virtual (_, impls) -> { impls; replacement = None }
     | Real role ->
@@ -176,20 +161,15 @@ module Make (Context : S.CONTEXT) = struct
         |> List.filter_map (function
             | _, Some _rejection -> None
             | version, None ->
-              let pkg = OpamPackage.create role.name version in
-              let opam = Context.load role.context pkg in
-              (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
+              let pkg = Context.load role.context (role.name, version) in
               let requires =
-                let make_deps importance xform get =
-                  get opam
-                  |> Context.filter_deps context pkg
-                  |> xform
-                  |> list_deps ~context ~importance
+                let make_deps importance kind deps =
+                  list_deps ~context ~importance ~kind deps
                 in
-                make_deps `Essential ensure OpamFile.OPAM.depends @
-                make_deps `Restricts prevent OpamFile.OPAM.conflicts
+                make_deps `Essential `Ensure (ensure pkg.Cudf.depends) @
+                make_deps `Restricts `Prevent (prevent pkg.Cudf.conflicts)
               in
-              Some (RealImpl { context; pkg; opam; requires })
+              Some (RealImpl {pkg; requires})
           )
       in
       { impls; replacement = None }
@@ -201,7 +181,8 @@ module Make (Context : S.CONTEXT) = struct
     | Dummy -> true
     | VirtualImpl _ -> assert false        (* Can't constrain version of a virtual impl! *)
     | RealImpl impl ->
-      let result = OpamFormula.check_version_formula expr (OpamPackage.version impl.pkg) in
+      let aux (c, v) = fop c impl.pkg.Cudf.version v in
+      let result = List.exists aux expr in
       match kind with
       | `Ensure -> result
       | `Prevent -> not result
@@ -218,9 +199,8 @@ module Make (Context : S.CONTEXT) = struct
         |> List.filter_map (function
             | _, None -> None
             | version, Some reason ->
-              let pkg = OpamPackage.create role.name version in
-              let opam = Context.load role.context pkg in
-              Some (RealImpl { context; pkg; opam; requires = [] }, reason)
+              let pkg = Context.load role.context (role.name, version) in
+              Some (RealImpl {pkg; requires = []}, reason)
           )
       in
       let notes = [] in
@@ -228,7 +208,7 @@ module Make (Context : S.CONTEXT) = struct
 
   let compare_version a b =
     match a, b with
-    | RealImpl a, RealImpl b -> OpamPackage.compare a.pkg b.pkg
+    | RealImpl a, RealImpl b -> compare (a.pkg.Cudf.version : int) b.pkg.Cudf.version
     | VirtualImpl (ia, _), VirtualImpl (ib, _) -> compare (ia : int) ib
     | a, b -> compare a b
 
@@ -236,8 +216,8 @@ module Make (Context : S.CONTEXT) = struct
     | Virtual _ -> None
     | Real role ->
       match Context.user_restrictions role.context role.name with
-      | None -> None
-      | Some f -> Some { kind = `Ensure; expr = OpamFormula.Atom f }
+      | [] -> None
+      | expr -> Some { kind = `Ensure; expr }
 
   let format_machine _impl = "(src)"
 
@@ -249,19 +229,22 @@ module Make (Context : S.CONTEXT) = struct
     | `Lt -> "<"
     | `Neq -> "<>"
 
-  let string_of_version_formula = OpamFormula.string_of_formula (fun (rel, v) ->
-      Printf.sprintf "%s %s" (string_of_op rel) (OpamPackage.Version.to_string v)
+  let string_of_version_formula l =
+    String.concat " & " (
+      List.map (fun (rel, v) ->
+          Printf.sprintf "%s %s" (string_of_op rel) (string_of_int v)
+        ) l
     )
 
   let string_of_restriction = function
-    | { kind = `Prevent; expr = OpamFormula.Empty } -> "conflict with all versions"
+    | { kind = `Prevent; expr = [] } -> "conflict with all versions"
     | { kind = `Prevent; expr } -> Fmt.strf "not(%s)" (string_of_version_formula expr)
     | { kind = `Ensure; expr } -> string_of_version_formula expr
 
   let describe_problem _impl = Fmt.to_to_string Context.pp_rejection
 
   let version = function
-    | RealImpl impl -> Some impl.pkg
+    | RealImpl impl -> Some (impl.pkg.Cudf.package, impl.pkg.Cudf.version)
     | VirtualImpl _ -> None
     | Dummy -> None
 end

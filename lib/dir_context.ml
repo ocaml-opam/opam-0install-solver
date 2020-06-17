@@ -1,4 +1,6 @@
-type rejection = UserConstraint of OpamFormula.atom
+type rejection =
+  | UserConstraint of OpamFormula.atom
+  | Unavailable
 
 let ( / ) = Filename.concat
 
@@ -36,12 +38,21 @@ let user_restrictions t name =
 
 let dev = OpamPackage.Version.of_string "dev"
 
-let std_env ~arch ~os ~os_distribution ~os_family ~os_version = function
+let std_env
+    ?(ocaml_native=true)
+    ?sys_ocaml_version
+    ~arch ~os ~os_distribution ~os_family ~os_version
+    () =
+  function
   | "arch" -> Some (OpamTypes.S arch)
   | "os" -> Some (OpamTypes.S os)
   | "os-distribution" -> Some (OpamTypes.S os_distribution)
   | "os-version" -> Some (OpamTypes.S os_version)
   | "os-family" -> Some (OpamTypes.S os_family)
+  | "opam-version"  -> Some (OpamVariable.string OpamVersion.(to_string current))
+  | "sys-ocaml-version" -> sys_ocaml_version |> Option.map (fun v -> OpamTypes.S v)
+  | "ocaml:native" -> Some (OpamTypes.B ocaml_native)
+  | "enable-ocaml-beta-repository" -> None      (* Fake variable? *)
   | v ->
     OpamConsole.warning "Unknown variable %S" v;
     None
@@ -61,7 +72,7 @@ let filter_deps t pkg f =
 
 let candidates t name =
   match OpamPackage.Name.Map.find_opt name t.pins with
-  | Some (version, _) -> [version, None]
+  | Some (version, opam) -> [version, Ok opam]
   | None ->
     let versions_dir = t.packages_dir / OpamPackage.Name.to_string name in
     match list_dir versions_dir with
@@ -77,8 +88,17 @@ let candidates t name =
       |> List.map (fun v ->
           match user_constraints with
           | Some test when not (OpamFormula.check_version_formula (OpamFormula.Atom test) v) ->
-            v, Some (UserConstraint (name, Some test))  (* Reject *)
-          | _ -> v, None
+            v, Error (UserConstraint (name, Some test))
+          | _ ->
+            let pkg = OpamPackage.create name v in
+            let opam = load t pkg in
+            let available = OpamFile.OPAM.available opam in
+            match OpamFilter.eval ~default:(B false) (env t pkg) available with
+            | B true -> v, Ok opam
+            | B false -> v, Error Unavailable
+            | _ ->
+              OpamConsole.error "Available expression not a boolean: %s" (OpamFilter.to_string available);
+              v, Error Unavailable
         )
     | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
       OpamConsole.log "opam-0install" "Package %S not found!" (OpamPackage.Name.to_string name);
@@ -86,6 +106,7 @@ let candidates t name =
 
 let pp_rejection f = function
   | UserConstraint x -> Fmt.pf f "Rejected by user-specified constraint %s" (OpamFormula.string_of_atom x)
+  | Unavailable -> Fmt.string f "Availability condition not satisfied"
 
 let create ?(test=OpamPackage.Name.Set.empty) ?(pins=OpamPackage.Name.Map.empty) ~constraints ~env packages_dir =
   { env; packages_dir; pins; constraints; test }

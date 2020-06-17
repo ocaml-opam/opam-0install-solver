@@ -30,14 +30,17 @@ module Make (Context : S.CONTEXT) = struct
   and impl =
     | RealImpl of real_impl                     (* An implementation is usually an opam package *)
     | VirtualImpl of int * dependency list      (* (int just for sorting) *)
+    | Reject of OpamPackage.t
     | Dummy                                     (* Used for diagnostics *)
 
   let rec pp_version f = function
     | RealImpl impl -> Fmt.string f @@ OpamPackage.Version.to_string (OpamPackage.version impl.pkg)
+    | Reject pkg -> Fmt.string f @@ OpamPackage.version_to_string pkg
     | VirtualImpl (_i, deps) -> Fmt.(list ~sep:(unit "&") pp_role) f (List.map (fun d -> d.drole) deps)
     | Dummy -> Fmt.string f "(no version)"
   and pp_impl f = function
     | RealImpl impl -> Fmt.string f (OpamPackage.to_string impl.pkg)
+    | Reject pkg -> Fmt.string f @@ OpamPackage.to_string pkg
     | VirtualImpl _ as x -> pp_version f x
     | Dummy -> Fmt.string f "(no solution found)"
   and pp_role f = function
@@ -119,7 +122,7 @@ module Make (Context : S.CONTEXT) = struct
     aux deps
 
   let requires _ = function
-    | Dummy -> [], []
+    | Dummy | Reject _ -> [], []
     | VirtualImpl (_, deps) -> deps, []
     | RealImpl impl -> impl.requires, []
 
@@ -140,7 +143,7 @@ module Make (Context : S.CONTEXT) = struct
     | RealImpl impl ->
       OpamFile.OPAM.conflict_class impl.opam |> List.map OpamPackage.Name.to_string
     | VirtualImpl _ -> []
-    | Dummy -> []
+    | Dummy | Reject _ -> []
 
   (* Opam uses conflicts, e.g.
        conflicts if X {> 1} OR Y {< 1 OR > 2}
@@ -174,10 +177,9 @@ module Make (Context : S.CONTEXT) = struct
       let impls =
         Context.candidates context role.name
         |> List.filter_map (function
-            | _, Some _rejection -> None
-            | version, None ->
+            | _, Error _rejection -> None
+            | version, Ok opam ->
               let pkg = OpamPackage.create role.name version in
-              let opam = Context.load role.context pkg in
               (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
               let requires =
                 let make_deps importance xform get =
@@ -200,6 +202,7 @@ module Make (Context : S.CONTEXT) = struct
     match impl with
     | Dummy -> true
     | VirtualImpl _ -> assert false        (* Can't constrain version of a virtual impl! *)
+    | Reject _ -> false
     | RealImpl impl ->
       let result = OpamFormula.check_version_formula expr (OpamPackage.version impl.pkg) in
       match kind with
@@ -216,11 +219,10 @@ module Make (Context : S.CONTEXT) = struct
       let rejects =
         Context.candidates context role.name
         |> List.filter_map (function
-            | _, None -> None
-            | version, Some reason ->
+            | _, Ok _ -> None
+            | version, Error reason ->
               let pkg = OpamPackage.create role.name version in
-              let opam = Context.load role.context pkg in
-              Some (RealImpl { context; pkg; opam; requires = [] }, reason)
+              Some (Reject pkg, reason)
           )
       in
       let notes = [] in
@@ -230,6 +232,7 @@ module Make (Context : S.CONTEXT) = struct
     match a, b with
     | RealImpl a, RealImpl b -> OpamPackage.compare a.pkg b.pkg
     | VirtualImpl (ia, _), VirtualImpl (ib, _) -> compare (ia : int) ib
+    | Reject a, Reject b -> OpamPackage.compare a b
     | a, b -> compare a b
 
   let user_restrictions = function
@@ -262,6 +265,7 @@ module Make (Context : S.CONTEXT) = struct
 
   let version = function
     | RealImpl impl -> Some impl.pkg
+    | Reject pkg -> Some pkg
     | VirtualImpl _ -> None
     | Dummy -> None
 end

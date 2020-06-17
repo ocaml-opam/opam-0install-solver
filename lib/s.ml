@@ -7,14 +7,12 @@ module type CONTEXT = sig
 
   val pp_rejection : rejection Fmt.t
 
-  val load : t -> OpamPackage.t -> OpamFile.OPAM.t
-  (** [load t pkg] loads the opam metadata for [pkg]. *)
-
-  val candidates : t -> OpamPackage.Name.t -> (OpamPackage.Version.t * rejection option) list
+  val candidates : t -> OpamPackage.Name.t -> (OpamPackage.Version.t * (OpamFile.OPAM.t, rejection) result) list
   (** [candidates t name] is the list of available versions of [name], in order
       of decreasing preference. If the user or environment provides additional
       constraints that mean a version should be rejected, include that here too. Rejects
-      are only used for generating diagnostics reports. *)
+      are only used for generating diagnostics reports. Candidates whose "availablity" field
+      isn't satisfied must be rejected here. *)
 
   val user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option
   (** [user_restrictions t pkg] is the user's constraint on [pkg], if any. This is just

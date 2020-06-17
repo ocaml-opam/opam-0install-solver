@@ -39,8 +39,11 @@ let candidates t name =
     |> List.map (fun v ->
         match user_constraints with
         | Some test when not (OpamFormula.check_version_formula (OpamFormula.Atom test) v) ->
-          v, Some (UserConstraint (name, Some test))  (* Reject *)
-        | _ -> v, None
+          v, Error (UserConstraint (name, Some test))
+        | _ ->
+          let opam = load t (OpamPackage.create name v) in
+          (* Note: [OpamStateTypes.available_packages] filters out unavailable packages for us. *)
+          v, Ok opam
       )
   | None ->
     OpamConsole.log "opam-0install" "Package %S not found!" (OpamPackage.Name.to_string name);

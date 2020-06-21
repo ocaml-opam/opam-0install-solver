@@ -52,7 +52,6 @@ the CUDF interface.
  (depends
   fmt
   cmdliner
-  opam-state
   cudf
   (ocaml (>= 4.08.0))
   0install-solver))

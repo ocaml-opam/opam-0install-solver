@@ -76,9 +76,9 @@ module Make (Context : S.CONTEXT) = struct
       !i
 
   let virtual_impl ~context ~depends () =
-    let depends = depends |> List.map (fun name ->
+    let depends = depends |> List.map (fun (name, importance) ->
         let drole = role context name in
-        { drole; importance = `Essential; restrictions = []}
+        { drole; importance; restrictions = []}
       ) in
     VirtualImpl (fresh_id (), depends)
 

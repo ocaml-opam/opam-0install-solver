@@ -53,11 +53,8 @@ module Input = Model.Make(Context)
 
 let requirements ~context pkgs =
   let role =
-    match pkgs with
-    | [pkg] -> Input.role context pkg
-    | pkgs ->
-        let impl = Input.virtual_impl ~context ~depends:pkgs () in
-        Input.virtual_role [impl]
+    let impl = Input.virtual_impl ~context ~depends:pkgs () in
+    Input.virtual_role [impl]
   in
   { Input.role; command = None }
 

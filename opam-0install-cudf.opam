@@ -22,7 +22,6 @@ depends: [
   "dune" {>= "2.0"}
   "fmt"
   "cmdliner"
-  "opam-state"
   "cudf"
   "ocaml" {>= "4.08.0"}
   "0install-solver"

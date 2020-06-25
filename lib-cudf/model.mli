@@ -32,7 +32,7 @@ module Make (Context : S.CONTEXT) : sig
 
   val virtual_impl :
     context:Context.t ->
-    depends:(Cudf_types.pkgname * [`Essential | `Recommended | `Restricts]) list ->
+    depends:(Cudf_types.pkgname * [`Essential | `Recommended]) list ->
     unit ->
     impl
   (** [virtual_impl ~context ~depends] is a virtual package which just depends

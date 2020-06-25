@@ -20,6 +20,8 @@ module Make (Context : S.CONTEXT) = struct
     name : Cudf_types.pkgname;
   }
 
+  type importance = [ `Essential | `Recommended | `Restricts ]
+
   type role =
     | Real of real_role               (* A role is usually an opam package name *)
     | Virtual of int * impl list      (* (int just for sorting) *)
@@ -29,7 +31,7 @@ module Make (Context : S.CONTEXT) = struct
   }
   and dependency = {
     drole : role;
-    importance : [ `Essential | `Recommended | `Restricts ];
+    importance : importance;
     restrictions : restriction list;
   }
   and impl =
@@ -78,6 +80,7 @@ module Make (Context : S.CONTEXT) = struct
   let virtual_impl ~context ~depends () =
     let depends = depends |> List.map (fun (name, importance) ->
         let drole = role context name in
+        let importance = (importance :> importance) in
         { drole; importance; restrictions = []}
       ) in
     VirtualImpl (fresh_id (), depends)
@@ -93,7 +96,7 @@ module Make (Context : S.CONTEXT) = struct
 
   type dep_info = {
     dep_role : Role.t;
-    dep_importance : [ `Essential | `Recommended | `Restricts ];
+    dep_importance : importance;
     dep_required_commands : command_name list;
   }
 

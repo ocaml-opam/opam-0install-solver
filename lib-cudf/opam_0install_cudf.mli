@@ -10,7 +10,7 @@ val create : constraints:(Cudf_types.pkgname * (Cudf_types.relop * Cudf_types.ve
 
 val solve :
   t ->
-  (Cudf_types.pkgname * [`Essential | `Recommended | `Restricts]) list ->
+  (Cudf_types.pkgname * [`Essential | `Recommended]) list ->
   (selections, diagnostics) result
 (** [solve t packages] finds a compatible set of package versions that
     includes all packages in [packages] according to their requirement tag,

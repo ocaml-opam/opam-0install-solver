@@ -8,9 +8,13 @@ val create : constraints:(Cudf_types.pkgname * (Cudf_types.relop * Cudf_types.ve
 (** [create ~constraints universe] is a solver that gets candidates from [universe], filtering them
     using [constraints]. *)
 
-val solve : t -> Cudf_types.pkgname list -> (selections, diagnostics) result
-(** [solve t package_names] finds a compatible set of package versions that
-    includes all packages in [package_names] and their required dependencies. *)
+val solve :
+  t ->
+  (Cudf_types.pkgname * [`Essential | `Recommended]) list ->
+  (selections, diagnostics) result
+(** [solve t packages] finds a compatible set of package versions that
+    includes all packages in [packages] according to their requirement tag,
+    and their required dependencies if needed. *)
 
 val packages_of_result : selections -> (Cudf_types.pkgname * Cudf_types.version) list
 

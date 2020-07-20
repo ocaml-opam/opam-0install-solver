@@ -135,4 +135,4 @@ A virtual package is also created if you specify multiple packages on the comman
 
 [Zeroinstall_solver.S]: https://0install.github.io/0install/0install-solver/Zeroinstall_solver/S/index.html
 [Simplifying the Solver With Functors]: https://roscidus.com/blog/blog/2014/09/17/simplifying-the-solver-with-functors/
-[API docs]: https://talex5.github.io/opam-0install-solver/
+[API docs]: https://ocaml-opam.github.io/opam-0install-solver/

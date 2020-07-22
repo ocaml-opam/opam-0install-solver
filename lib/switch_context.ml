@@ -40,8 +40,7 @@ let candidates t name =
   let user_constraints = user_restrictions t name in
   match OpamPackage.Name.Map.find_opt name t.pkgs with
   | Some versions ->
-    OpamPackage.Version.Set.to_seq versions
-    |> List.of_seq
+    OpamPackage.Version.Set.elements versions
     |> sort_versions t       (* Higher versions are preferred. *)
     |> List.map (fun v ->
         match user_constraints with

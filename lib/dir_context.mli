@@ -20,6 +20,7 @@ val std_env :
     variables, and [None] for anything else. *)
 
 val create :
+  ?prefer_oldest:bool ->
   ?test:OpamPackage.Name.Set.t ->
   ?pins:(OpamTypes.version * OpamFile.OPAM.t) OpamTypes.name_map ->
   constraints:OpamFormula.version_constraint OpamTypes.name_map ->
@@ -33,4 +34,7 @@ val create :
     @param test Packages for which we should include "with-test" dependencies.
     @param pins Packages in this map have only the given candidate version and opam file.
     @param env Maps opam variable names to values ({!std_env} may be useful here).
-               "version" and the [OpamPackageVar.predefined_depends_variables] are handled automatically. *)
+               "version" and the [OpamPackageVar.predefined_depends_variables] are handled automatically.
+    @param prefer_oldest if [true] the solver is set to return the least
+    up-to-date version of each package, if a solution exists. This is [false] by
+    default. @before 0.4 the [prefer_oldest] parameter did not exist. *)

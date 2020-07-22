@@ -2,7 +2,7 @@ module Solver = Opam_0install.Solver.Make(Opam_0install.Switch_context)
 
 let pp_pkg = Fmt.of_to_string OpamPackage.to_string
 
-let select verbose with_test = function
+let select verbose with_test prefer_oldest = function
   | [] -> OpamConsole.error "No packages requested!"; `Bad_arguments
   | spec ->
     let t0 = Unix.gettimeofday () in
@@ -28,7 +28,7 @@ let select verbose with_test = function
       if with_test then OpamPackage.Name.Set.of_list pkgs
       else OpamPackage.Name.Set.empty
     in
-    let context = Opam_0install.Switch_context.create ~constraints ~test st in
+    let context = Opam_0install.Switch_context.create ~prefer_oldest ~constraints ~test st in
     (* Try to find a solution: *)
     let t0 = Unix.gettimeofday () in
     let r = Solver.solve context pkgs in
@@ -79,6 +79,11 @@ let atom =
 let spec =
   Arg.pos_all atom [] @@ Arg.info []
 
+let prefer_oldest =
+  let doc = "Select the least up-to-date version of each package \
+             instead of the most up-to-date" in
+  Arg.(value @@ flag @@ info ["prefer-oldest"] ~doc)
+
 let with_test =
   let doc = "Select with-test dependencies of named packages too" in
   Arg.(value @@ flag @@ info ["t"; "with-test"] ~doc)
@@ -89,7 +94,7 @@ let verbose =
 
 let cmd =
   let doc = "Select opam packages using 0install backend" in
-  Term.(const select $ verbose $ with_test $ Arg.value spec),
+  Term.(const select $ verbose $ with_test $ prefer_oldest $ Arg.value spec),
   Term.info "opam-0install" ~doc
 
 let () =

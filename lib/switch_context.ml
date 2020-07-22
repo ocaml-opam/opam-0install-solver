@@ -5,6 +5,7 @@ type t = {
   pkgs : OpamTypes.version_set OpamTypes.name_map;                    (* All available versions *)
   constraints : OpamFormula.version_constraint OpamTypes.name_map;    (* User-provided constraints *)
   test : OpamPackage.Name.Set.t;
+  prefer_oldest : bool;
 }
 
 let load t pkg =
@@ -29,13 +30,19 @@ let filter_deps t pkg f =
   |> OpamFilter.partial_filter_formula (env t pkg)
   |> OpamFilter.filter_deps ~build:true ~post:true ~test ~doc:false ~dev:false ~default:false
 
+let sort_versions t versions =
+  if t.prefer_oldest then
+    versions
+  else
+    List.rev versions
+
 let candidates t name =
   let user_constraints = user_restrictions t name in
   match OpamPackage.Name.Map.find_opt name t.pkgs with
   | Some versions ->
     OpamPackage.Version.Set.to_seq versions
     |> List.of_seq
-    |> List.rev       (* Higher versions are preferred. *)
+    |> sort_versions t       (* Higher versions are preferred. *)
     |> List.map (fun v ->
         match user_constraints with
         | Some test when not (OpamFormula.check_version_formula (OpamFormula.Atom test) v) ->
@@ -52,6 +59,6 @@ let candidates t name =
 let pp_rejection f = function
   | UserConstraint x -> Fmt.pf f "Rejected by user-specified constraint %s" (OpamFormula.string_of_atom x)
 
-let create ?(test=OpamPackage.Name.Set.empty) ~constraints st =
+let create ?(prefer_oldest=false) ?(test=OpamPackage.Name.Set.empty) ~constraints st =
   let pkgs = Lazy.force st.OpamStateTypes.available_packages |> OpamPackage.to_map in
-  { st; pkgs; constraints; test }
+  { st; pkgs; constraints; test; prefer_oldest }

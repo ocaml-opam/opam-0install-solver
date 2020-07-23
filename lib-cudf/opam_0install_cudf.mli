@@ -4,9 +4,17 @@ type selections
 
 type diagnostics
 
-val create : constraints:(Cudf_types.pkgname * (Cudf_types.relop * Cudf_types.version)) list -> Cudf.universe -> t
-(** [create ~constraints universe] is a solver that gets candidates from [universe], filtering them
-    using [constraints]. *)
+val create :
+  ?prefer_oldest:bool ->
+  constraints:(Cudf_types.pkgname * (Cudf_types.relop * Cudf_types.version)) list ->
+  Cudf.universe ->
+  t
+(** [create ~constraints universe] is a solver that gets candidates from [universe],
+    filtering them using [constraints].
+
+    @param prefer_oldest if [true] the solver is set to return the least
+    up-to-date version of each package, if a solution exists. This is [false] by
+    default. @before 0.4 the [prefer_oldest] parameter did not exist. *)
 
 val solve :
   t ->

@@ -23,6 +23,7 @@ type t = {
   pins : (OpamPackage.Version.t * OpamFile.OPAM.t) OpamPackage.Name.Map.t;
   constraints : OpamFormula.version_constraint OpamTypes.name_map;    (* User-provided constraints *)
   test : OpamPackage.Name.Set.t;
+  prefer_oldest : bool;
 }
 
 let load t pkg =
@@ -70,6 +71,12 @@ let filter_deps t pkg f =
   |> OpamFilter.partial_filter_formula (env t pkg)
   |> OpamFilter.filter_deps ~build:true ~post:true ~test ~doc:false ~dev ~default:false
 
+let version_compare t v1 v2 =
+  if t.prefer_oldest then
+    OpamPackage.Version.compare v1 v2
+  else
+    OpamPackage.Version.compare v2 v1
+
 let candidates t name =
   match OpamPackage.Name.Map.find_opt name t.pins with
   | Some (version, opam) -> [version, Ok opam]
@@ -84,7 +91,7 @@ let candidates t name =
           | Some pkg when Sys.file_exists (versions_dir / dir / "opam") -> Some (OpamPackage.version pkg)
           | _ -> None
         )
-      |> List.sort (fun a b -> OpamPackage.Version.compare b a)
+      |> List.sort (version_compare t)
       |> List.map (fun v ->
           match user_constraints with
           | Some test when not (OpamFormula.check_version_formula (OpamFormula.Atom test) v) ->
@@ -108,5 +115,9 @@ let pp_rejection f = function
   | UserConstraint x -> Fmt.pf f "Rejected by user-specified constraint %s" (OpamFormula.string_of_atom x)
   | Unavailable -> Fmt.string f "Availability condition not satisfied"
 
-let create ?(test=OpamPackage.Name.Set.empty) ?(pins=OpamPackage.Name.Map.empty) ~constraints ~env packages_dir =
-  { env; packages_dir; pins; constraints; test }
+let create
+      ?(prefer_oldest=false)
+      ?(test=OpamPackage.Name.Set.empty)
+      ?(pins=OpamPackage.Name.Map.empty)
+      ~constraints ~env packages_dir =
+  { env; packages_dir; pins; constraints; test; prefer_oldest }

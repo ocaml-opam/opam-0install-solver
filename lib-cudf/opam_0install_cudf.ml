@@ -4,6 +4,7 @@ module Context = struct
   type t = {
     universe : Cudf.universe;
     constraints : (Cudf_types.pkgname * (Cudf_types.relop * Cudf_types.version)) list;
+    prefer_oldest : bool;
   }
 
   let load t pkg =
@@ -17,13 +18,19 @@ module Context = struct
         acc
     ) [] t.constraints
 
+  let version_compare t pkg1 pkg2 =
+    if t.prefer_oldest then
+      compare (pkg1.Cudf.version : int) pkg2.Cudf.version
+    else
+      compare (pkg2.Cudf.version : int) pkg1.Cudf.version
+
   let candidates t name =
     let user_constraints = user_restrictions t name in
     match Cudf.lookup_packages t.universe name with
     | [] ->
         [] (* Package not found *)
     | versions ->
-        List.fast_sort (fun pkg1 pkg2 -> compare (pkg2.Cudf.version : int) pkg1.Cudf.version) versions
+        List.fast_sort (version_compare t) versions (* Higher versions are preferred. *)
         |> List.map (fun pkg ->
           let rec check_constr = function
             | [] -> (pkg.Cudf.version, None)
@@ -65,8 +72,8 @@ type t = Context.t
 type selections = Solver.Output.t
 type diagnostics = Input.requirements   (* So we can run another solve *)
 
-let create ~constraints universe =
-  { Context.universe; constraints; }
+let create ?(prefer_oldest=false) ~constraints universe =
+  { Context.universe; constraints; prefer_oldest }
 
 let solve context pkgs =
   let req = requirements ~context pkgs in

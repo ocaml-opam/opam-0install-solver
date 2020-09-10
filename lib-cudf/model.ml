@@ -20,8 +20,6 @@ module Make (Context : S.CONTEXT) = struct
     name : Cudf_types.pkgname;
   }
 
-  type importance = [ `Essential | `Recommended | `Restricts ]
-
   type role =
     | Real of real_role               (* A role is usually an opam package name *)
     | Virtual of int * impl list      (* (int just for sorting) *)
@@ -31,30 +29,30 @@ module Make (Context : S.CONTEXT) = struct
   }
   and dependency = {
     drole : role;
-    importance : importance;
+    importance : [ `Essential | `Recommended | `Restricts ];
     restrictions : restriction list;
   }
   and impl =
     | RealImpl of real_impl                     (* An implementation is usually an opam package *)
     | VirtualImpl of int * dependency list      (* (int just for sorting) *)
+    | Reject of (Cudf_types.pkgname * Cudf_types.version)
     | Dummy                                     (* Used for diagnostics *)
 
   let rec pp_version f = function
     | RealImpl impl -> Fmt.int f impl.pkg.Cudf.version
+    | Reject pkg -> Fmt.int f (snd pkg)
     | VirtualImpl (_i, deps) -> Fmt.string f (String.concat "&" (List.map (fun d -> Fmt.to_to_string pp_role d.drole) deps))
     | Dummy -> Fmt.string f "(no version)"
   and pp_impl f = function
-    | RealImpl impl -> Fmt.string f impl.pkg.Cudf.package
+    | RealImpl impl -> Fmt.pf f "%s.%d" impl.pkg.Cudf.package impl.pkg.Cudf.version
+    | Reject pkg -> Fmt.pf f "%s.%d" (fst pkg) (snd pkg)
     | VirtualImpl _ as x -> pp_version f x
     | Dummy -> Fmt.string f "(no solution found)"
   and pp_role f = function
     | Real t -> Fmt.string f t.name
     | Virtual (_, impls) -> Fmt.pf f "%a" Fmt.(list ~sep:(unit "|") pp_impl) impls
 
-  let pp_impl_long fmt = function
-    | RealImpl impl -> Fmt.pf fmt "%s.%d" impl.pkg.Cudf.package impl.pkg.Cudf.version
-    | VirtualImpl _ as x -> pp_version fmt x
-    | Dummy -> Fmt.string fmt "(no solution found)"
+  let pp_impl_long = pp_impl
 
   module Role = struct
     type t = role
@@ -80,7 +78,7 @@ module Make (Context : S.CONTEXT) = struct
   let virtual_impl ~context ~depends () =
     let depends = depends |> List.map (fun (name, importance) ->
         let drole = role context name in
-        let importance = (importance :> importance) in
+        let importance = (importance :> [ `Essential | `Recommended | `Restricts ]) in
         { drole; importance; restrictions = []}
       ) in
     VirtualImpl (fresh_id (), depends)
@@ -96,7 +94,7 @@ module Make (Context : S.CONTEXT) = struct
 
   type dep_info = {
     dep_role : Role.t;
-    dep_importance : importance;
+    dep_importance : [ `Essential | `Recommended | `Restricts ];
     dep_required_commands : command_name list;
   }
 
@@ -133,7 +131,7 @@ module Make (Context : S.CONTEXT) = struct
     aux deps
 
   let requires _ = function
-    | Dummy -> [], []
+    | Dummy | Reject _ -> [], []
     | VirtualImpl (_, deps) -> deps, []
     | RealImpl impl -> impl.requires, []
 
@@ -148,13 +146,17 @@ module Make (Context : S.CONTEXT) = struct
   type machine_group = private string   (* We don't use machine groups because opam is source-only. *)
   let machine_group _impl = None
 
-  type conflict_class = private string
+  type conflict_class = string
+
   let conflict_class _impl = []
 
-  let ensure l = l
+  let prevent f =
+    List.map (fun x -> [x]) f
 
-  let prevent l = List.map (fun x -> [x]) l
+  let ensure =
+    Fun.id
 
+  (* Get all the candidates for a role. *)
   let implementations = function
     | Virtual (_, impls) -> { impls; replacement = None }
     | Real role ->
@@ -162,17 +164,17 @@ module Make (Context : S.CONTEXT) = struct
       let impls =
         Context.candidates context role.name
         |> List.filter_map (function
-            | _, Some _rejection -> None
-            | version, None ->
-              let pkg = Context.load role.context (role.name, version) in
+            | _, Error _rejection -> None
+            | version, Ok pkg ->
               let requires =
-                let make_deps importance kind deps =
-                  list_deps ~context ~importance ~kind deps
+                let make_deps importance kind xform deps =
+                  xform deps
+                  |> list_deps ~context ~importance ~kind
                 in
-                make_deps `Essential `Ensure (ensure pkg.Cudf.depends) @
-                make_deps `Restricts `Prevent (prevent pkg.Cudf.conflicts)
+                make_deps `Essential `Ensure ensure pkg.Cudf.depends @
+                make_deps `Restricts `Prevent prevent pkg.Cudf.conflicts
               in
-              Some (RealImpl {pkg; requires})
+              Some (RealImpl { pkg; requires })
           )
       in
       { impls; replacement = None }
@@ -183,6 +185,7 @@ module Make (Context : S.CONTEXT) = struct
     match impl with
     | Dummy -> true
     | VirtualImpl _ -> assert false        (* Can't constrain version of a virtual impl! *)
+    | Reject _ -> false
     | RealImpl impl ->
       let aux (c, v) = fop c impl.pkg.Cudf.version v in
       let result = List.exists aux expr in
@@ -200,10 +203,10 @@ module Make (Context : S.CONTEXT) = struct
       let rejects =
         Context.candidates context role.name
         |> List.filter_map (function
-            | _, None -> None
-            | version, Some reason ->
-              let pkg = Context.load role.context (role.name, version) in
-              Some (RealImpl {pkg; requires = []}, reason)
+            | _, Ok _ -> None
+            | version, Error reason ->
+              let pkg = (role.name, version) in
+              Some (Reject pkg, reason)
           )
       in
       let notes = [] in
@@ -213,6 +216,7 @@ module Make (Context : S.CONTEXT) = struct
     match a, b with
     | RealImpl a, RealImpl b -> compare (a.pkg.Cudf.version : int) b.pkg.Cudf.version
     | VirtualImpl (ia, _), VirtualImpl (ib, _) -> compare (ia : int) ib
+    | Reject a, Reject b -> compare (snd a : int) (snd b)
     | a, b -> compare a b
 
   let user_restrictions = function
@@ -220,7 +224,7 @@ module Make (Context : S.CONTEXT) = struct
     | Real role ->
       match Context.user_restrictions role.context role.name with
       | [] -> None
-      | expr -> Some { kind = `Ensure; expr }
+      | f -> Some { kind = `Ensure; expr = f }
 
   let format_machine _impl = "(src)"
 
@@ -232,12 +236,9 @@ module Make (Context : S.CONTEXT) = struct
     | `Lt -> "<"
     | `Neq -> "<>"
 
-  let string_of_version_formula l =
-    String.concat " & " (
-      List.map (fun (rel, v) ->
-          Printf.sprintf "%s %s" (string_of_op rel) (string_of_int v)
-        ) l
-    )
+  let string_of_version_formula f = String.concat " & " (List.map (fun (rel, v) ->
+      Printf.sprintf "%s %s" (string_of_op rel) (string_of_int v)
+    ) f)
 
   let string_of_restriction = function
     | { kind = `Prevent; expr = [] } -> "conflict with all versions"
@@ -248,6 +249,7 @@ module Make (Context : S.CONTEXT) = struct
 
   let version = function
     | RealImpl impl -> Some (impl.pkg.Cudf.package, impl.pkg.Cudf.version)
+    | Reject pkg -> Some pkg
     | VirtualImpl _ -> None
     | Dummy -> None
 end

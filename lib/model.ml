@@ -56,7 +56,7 @@ module Make (Context : S.CONTEXT) = struct
 
     let compare a b =
       match a, b with
-      | Real a , Real b -> OpamPackage.Name.compare a.name b.name
+      | Real a, Real b -> OpamPackage.Name.compare a.name b.name
       | Virtual (a, _), Virtual (b, _) -> compare (a : int) b
       | Real _, Virtual _ -> -1
       | Virtual _, Real _ -> 1
@@ -73,7 +73,8 @@ module Make (Context : S.CONTEXT) = struct
   let virtual_impl ~context ~depends () =
     let depends = depends |> List.map (fun name ->
         let drole = role context name in
-        { drole; importance = `Essential; restrictions = []}
+        let importance = `Essential in
+        { drole; importance; restrictions = []}
       ) in
     VirtualImpl (fresh_id (), depends)
 

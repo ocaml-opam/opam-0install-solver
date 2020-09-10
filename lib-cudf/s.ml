@@ -7,10 +7,7 @@ module type CONTEXT = sig
 
   val pp_rejection : rejection Fmt.t
 
-  val load : t -> (Cudf_types.pkgname * Cudf_types.version) -> Cudf.package
-  (** [load t pkg] loads the opam metadata for [pkg]. *)
-
-  val candidates : t -> Cudf_types.pkgname -> (Cudf_types.version * rejection option) list
+  val candidates : t -> Cudf_types.pkgname -> (Cudf_types.version * (Cudf.package, rejection) result) list
   (** [candidates t name] is the list of available versions of [name], in order
       of decreasing preference. If the user or environment provides additional
       constraints that mean a version should be rejected, include that here too. Rejects

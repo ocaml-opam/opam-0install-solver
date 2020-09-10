@@ -7,9 +7,6 @@ module Context = struct
     prefer_oldest : bool;
   }
 
-  let load t pkg =
-    Cudf.lookup_package t.universe pkg
-
   let user_restrictions t name =
     List.fold_left (fun acc (name', c) ->
       if String.equal name name' then
@@ -33,12 +30,12 @@ module Context = struct
         List.fast_sort (version_compare t) versions (* Higher versions are preferred. *)
         |> List.map (fun pkg ->
           let rec check_constr = function
-            | [] -> (pkg.Cudf.version, None)
+            | [] -> (pkg.Cudf.version, Ok pkg)
             | ((op, v)::c) ->
                 if Model.fop op pkg.Cudf.version v then
                   check_constr c
                 else
-                  (pkg.Cudf.version, Some (UserConstraint (name, Some (op, v))))  (* Reject *)
+                  (pkg.Cudf.version, Error (UserConstraint (name, Some (op, v))))  (* Reject *)
           in
           check_constr user_constraints
         )

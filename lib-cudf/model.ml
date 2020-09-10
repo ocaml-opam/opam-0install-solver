@@ -105,28 +105,31 @@ module Make (Context : S.CONTEXT) = struct
 
   let dummy_impl = Dummy
 
-  let list_deps ~context ~importance ~kind deps =
+  (* Turn an CUDF formula into a 0install list of dependencies. *)
+  let list_deps ~context ~importance ~kind ~pname ~pver deps =
     let rec aux = function
-      | [[(name, constr)]] ->
+      | [] -> []
+      | [[(name, _)]] when String.equal name pname -> []
+      | [[(name, c)]] ->
         let drole = role context name in
         let restrictions =
-          match constr with
-          | None -> []
-          | Some c -> [{kind; expr = [c]}]
+          match kind, c with
+          | `Prevent, None -> [{ kind; expr = [] }]
+          | `Ensure, None -> []
+          | kind, Some c -> [{ kind; expr = [c] }]
         in
         [{ drole; restrictions; importance }]
+      | x::(_::_ as y) -> aux [x] @ aux y
       | [o] ->
         let impls = group_ors o in
         let drole = virtual_role impls in
         (* Essential because we must apply a restriction, even if its
            components are only restrictions. *)
         [{ drole; restrictions = []; importance = `Essential }]
-      | x::y -> aux [x] @ aux y
-      | [] -> []
     and group_ors = function
+      | x::(_::_ as y) -> group_ors [x] @ group_ors y
       | [expr] -> [VirtualImpl (fresh_id (), aux [[expr]])]
-      | x::y -> group_ors [x] @ group_ors y
-      | [] -> assert false (* TODO: implement false *)
+      | [] -> [Reject (pname, pver)]
     in
     aux deps
 
@@ -169,7 +172,7 @@ module Make (Context : S.CONTEXT) = struct
               let requires =
                 let make_deps importance kind xform deps =
                   xform deps
-                  |> list_deps ~context ~importance ~kind
+                  |> list_deps ~context ~importance ~kind ~pname:role.name ~pver:version
                 in
                 make_deps `Essential `Ensure ensure pkg.Cudf.depends @
                 make_deps `Restricts `Prevent prevent pkg.Cudf.conflicts
@@ -187,8 +190,7 @@ module Make (Context : S.CONTEXT) = struct
     | VirtualImpl _ -> assert false        (* Can't constrain version of a virtual impl! *)
     | Reject _ -> false
     | RealImpl impl ->
-      let aux (c, v) = fop c impl.pkg.Cudf.version v in
-      let result = List.exists aux expr in
+      let result = match expr with [] -> true | _ -> List.exists (fun (c, v) -> fop c impl.pkg.Cudf.version v) expr in
       match kind with
       | `Ensure -> result
       | `Prevent -> not result

@@ -5,10 +5,10 @@
 
 (generate_opam_files true)
 
-(source (github talex5/opam-0install-solver))
+(source (github ocaml-opam/opam-0install-solver))
 (authors "talex5@gmail.com")
 (maintainers "talex5@gmail.com")
-(documentation "https://talex5.github.io/opam-0install-solver/")
+(documentation "https://ocaml-opam.github.io/opam-0install-solver/")
 
 (package
  (name opam-0install)

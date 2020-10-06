@@ -37,4 +37,5 @@ val create :
                "version" and the [OpamPackageVar.predefined_depends_variables] are handled automatically.
     @param prefer_oldest if [true] the solver is set to return the least
     up-to-date version of each package, if a solution exists. This is [false] by
-    default. @before 0.4 the [prefer_oldest] parameter did not exist. *)
+    default.
+    @before 0.4 the [prefer_oldest] parameter did not exist. *)

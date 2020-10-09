@@ -1,9 +1,9 @@
-0.4 (09/10/2020)
+v0.4 (09/10/2020)
 ----------------
 
 - opam-0install-cudf: Fix conflict detection (@kit-ty-kate #20)
 
-0.3 (17/09/2020)
+v0.3 (17/09/2020)
 ----------------
 
 - opam-0install-cudf: Allow to tag packages as recommended when giving them to the solver (@kit-ty-kate #16)
@@ -18,7 +18,7 @@
 
 - Documentation: Add a link to API docs in the README (@talex5 #14 #17)
 
-0.2 (17/06/2020)
+v0.2 (17/06/2020)
 ----------------
 
 - Add a new `opam-0install-cudf` package (@kit-ty-kate #11).
@@ -38,7 +38,7 @@
   content of the opam file without having to load it twice. We also no longer
   bother loading the opam file for rejects (all we need is the name).
 
-0.1 (26/05/2020)
+v0.1 (26/05/2020)
 ----------------
 
 Initial release.

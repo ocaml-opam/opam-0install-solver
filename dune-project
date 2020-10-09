@@ -1,6 +1,6 @@
 (lang dune 2.0)
 (name opam-0install)
-(version 0.3)
+(version 0.4)
 (formatting disabled)
 
 (generate_opam_files true)

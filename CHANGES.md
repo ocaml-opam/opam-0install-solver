@@ -1,3 +1,8 @@
+0.4 (09/10/2020)
+----------------
+
+- opam-0install-cudf: Fix conflict detection (@kit-ty-kate #20)
+
 0.3 (17/09/2020)
 ----------------
 

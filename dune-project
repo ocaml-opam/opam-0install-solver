@@ -30,6 +30,7 @@ This package uses 0install's solver algorithm with opam packages.
   opam-state
   (ocaml (>= 4.08.0))
   0install-solver
+  (opam-file-format (>= 2.1.1))
   (opam-client :with-test)
   (opam-solver :with-test)
   (astring :with-test)

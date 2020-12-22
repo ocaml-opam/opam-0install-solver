@@ -100,4 +100,4 @@ let cmd =
 let () =
   match Term.eval cmd with
   | `Ok reason -> exit (OpamStd.Sys.get_exit_code reason)
-  | x -> Term.exit x
+  | `Error _ | `Help | `Version as x -> Term.exit x

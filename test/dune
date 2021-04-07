@@ -1,3 +1,10 @@
 (executables
  (names test dump diff)
+ (modules test dump diff)
  (libraries opam-0install fmt fmt.tty alcotest opam-solver opam-client astring))
+
+(test
+ (name tests)
+ (package opam-0install)
+ (modules tests)
+ (libraries opam-0install alcotest))

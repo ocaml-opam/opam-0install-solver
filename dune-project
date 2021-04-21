@@ -1,4 +1,4 @@
-(lang dune 2.0)
+(lang dune 2.7)
 (name opam-0install)
 (version 0.4.1)
 (formatting disabled)
@@ -27,7 +27,7 @@ This package uses 0install's solver algorithm with opam packages.
  (depends
   fmt
   cmdliner
-  opam-state
+  (opam-state (>= 2.1.0~rc))
   (ocaml (>= 4.08.0))
   0install-solver
   (opam-file-format (>= 2.1.1))

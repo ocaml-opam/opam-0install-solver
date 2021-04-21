@@ -19,10 +19,10 @@ homepage: "https://github.com/ocaml-opam/opam-0install-solver"
 doc: "https://ocaml-opam.github.io/opam-0install-solver/"
 bug-reports: "https://github.com/ocaml-opam/opam-0install-solver/issues"
 depends: [
-  "dune" {>= "2.0"}
+  "dune" {>= "2.7"}
   "fmt"
   "cmdliner"
-  "opam-state"
+  "opam-state" {>= "2.1.0~rc"}
   "ocaml" {>= "4.08.0"}
   "0install-solver"
   "opam-file-format" {>= "2.1.1"}
@@ -30,9 +30,10 @@ depends: [
   "opam-solver" {with-test}
   "astring" {with-test}
   "alcotest" {with-test}
+  "odoc" {with-doc}
 ]
 build: [
-  ["dune" "subst"] {pinned}
+  ["dune" "subst"] {dev}
   [
     "dune"
     "build"

@@ -52,8 +52,6 @@ This package uses 0install's solver algorithm with opam packages using
 the CUDF interface.
 ")
  (depends
-  fmt
-  cmdliner
   cudf
   (ocaml (>= 4.08.0))
   0install-solver))

@@ -15,6 +15,7 @@ This package uses 0install's solver algorithm with opam packages.
 """
 maintainer: ["talex5@gmail.com"]
 authors: ["talex5@gmail.com"]
+license: "ISC"
 homepage: "https://github.com/ocaml-opam/opam-0install-solver"
 doc: "https://ocaml-opam.github.io/opam-0install-solver/"
 bug-reports: "https://github.com/ocaml-opam/opam-0install-solver/issues"

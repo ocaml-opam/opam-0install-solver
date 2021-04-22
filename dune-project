@@ -9,6 +9,7 @@
 (authors "talex5@gmail.com")
 (maintainers "talex5@gmail.com")
 (documentation "https://ocaml-opam.github.io/opam-0install-solver/")
+(license ISC)
 
 (package
  (name opam-0install)

@@ -49,10 +49,13 @@ module Make(Context : S.CONTEXT) = struct
     Fmt.pf f "Selected: @[<hov>%a@]@,%a" (Fmt.(list ~sep:sp) pp_short) short
       (Fmt.(list ~sep:cut) pp_item) long
 
-  let diagnostics ?(verbose=false) req =
+  let diagnostics_rolemap req =
     Solver.do_solve req ~closest_match:true
     |> Option.get
     |> Diagnostics.of_result
+
+  let diagnostics ?(verbose=false) req =
+    diagnostics_rolemap req
     |> Fmt.strf "Can't find all required versions.@\n@[<v0>%a@]" (pp_rolemap ~verbose)
 
   let packages_of_result sels =

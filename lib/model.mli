@@ -41,5 +41,5 @@ module Make (Context : S.CONTEXT) : sig
   val formula : restriction -> [`Ensure | `Prevent] * OpamFormula.version_formula
   (** [formula restriction] returns the version formula represented by this
       restriction along with its negation status: [(`Prevent, formula)] roughly
-      means [not formula]. *) 
+      means [not formula]. *)
 end

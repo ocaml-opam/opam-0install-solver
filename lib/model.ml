@@ -269,4 +269,10 @@ module Make (Context : S.CONTEXT) = struct
     | Reject pkg -> Some pkg
     | VirtualImpl _ -> None
     | Dummy -> None
+
+  let package_name = function
+    | Real {name; _} -> Some name
+    | Virtual _ -> None
+
+  let formula { kind; expr } = (kind, expr)
 end

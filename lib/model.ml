@@ -36,7 +36,7 @@ module Make (Context : S.CONTEXT) = struct
   let rec pp_version f = function
     | RealImpl impl -> Fmt.string f @@ OpamPackage.Version.to_string (OpamPackage.version impl.pkg)
     | Reject pkg -> Fmt.string f @@ OpamPackage.version_to_string pkg
-    | VirtualImpl (_i, deps) -> Fmt.(list ~sep:(unit "&") pp_role) f (List.map (fun d -> d.drole) deps)
+    | VirtualImpl (_i, deps) -> Fmt.(list ~sep:(any "&") pp_role) f (List.map (fun d -> d.drole) deps)
     | Dummy -> Fmt.string f "(no version)"
   and pp_impl f = function
     | RealImpl impl -> Fmt.string f (OpamPackage.to_string impl.pkg)
@@ -45,7 +45,7 @@ module Make (Context : S.CONTEXT) = struct
     | Dummy -> Fmt.string f "(no solution found)"
   and pp_role f = function
     | Real t -> Fmt.string f (OpamPackage.Name.to_string t.name)
-    | Virtual (_, impls) -> Fmt.pf f "%a" Fmt.(list ~sep:(unit "|") pp_impl) impls
+    | Virtual (_, impls) -> Fmt.pf f "%a" Fmt.(list ~sep:(any "|") pp_impl) impls
 
   let pp_impl_long = pp_impl
 
@@ -259,7 +259,7 @@ module Make (Context : S.CONTEXT) = struct
 
   let string_of_restriction = function
     | { kind = `Prevent; expr = OpamFormula.Empty } -> "conflict with all versions"
-    | { kind = `Prevent; expr } -> Fmt.strf "not(%s)" (string_of_version_formula expr)
+    | { kind = `Prevent; expr } -> Fmt.str "not(%s)" (string_of_version_formula expr)
     | { kind = `Ensure; expr } -> string_of_version_formula expr
 
   let describe_problem _impl = Fmt.to_to_string Context.pp_rejection

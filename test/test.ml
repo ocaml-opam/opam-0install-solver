@@ -119,7 +119,7 @@ let compare st ~opam ~zi =
     )
 
 let test st spec =
-  Fmt.pr "@.== Solving for %a ==@." (Fmt.styled `Bold Fmt.(list ~sep:(unit " ") string)) spec;
+  Fmt.pr "@.== Solving for %a ==@." (Fmt.styled `Bold Fmt.(list ~sep:(any " ") string)) spec;
   let spec = spec |> List.map (fun s ->
       if String.contains s '.' then (
         let { OpamPackage.name; version } = OpamPackage.of_string s in

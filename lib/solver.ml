@@ -60,7 +60,7 @@ module Make(Context : S.CONTEXT) = struct
 
   let diagnostics ?(verbose=false) req =
     diagnostics_rolemap req
-    |> Fmt.strf "Can't find all required versions.@\n@[<v0>%a@]" (pp_rolemap ~verbose)
+    |> Fmt.str "Can't find all required versions.@\n@[<v0>%a@]" (pp_rolemap ~verbose)
 
   let packages_of_result sels =
     sels

@@ -34,7 +34,7 @@ module Name = OpamPackage.Name
 let pp_pkg = Fmt.of_to_string OpamPackage.to_string
 
 let pp_result f = function
-  | Ok sels -> Fmt.pf f "%a" Fmt.(list ~sep:(unit " ") pp_pkg) (Solver.packages_of_result sels)
+  | Ok sels -> Fmt.pf f "%a" Fmt.(list ~sep:(any " ") pp_pkg) (Solver.packages_of_result sels)
   | Error _ -> Fmt.pf f "NO-SOLUTION"
 
 let rec waitpid_non_intr pid =

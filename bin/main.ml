@@ -35,7 +35,7 @@ let select verbose with_test prefer_oldest = function
     let t1 = Unix.gettimeofday () in
     match r with
     | Ok sels ->
-      Fmt.pr "%a@." Fmt.(list ~sep:(unit " ") pp_pkg) (Solver.packages_of_result sels);
+      Fmt.pr "%a@." Fmt.(list ~sep:(any " ") pp_pkg) (Solver.packages_of_result sels);
       OpamConsole.note "Solve took %.2f s" (t1 -. t0);
       `Success
     | Error problem ->

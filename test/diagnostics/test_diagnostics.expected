@@ -3,5 +3,5 @@ Selected: main.1
 - foo -> (problem)
     main 1 requires >= 2
     Rejected candidates:
-      foo.2: Availability condition not satisfied
       foo.1: Incompatible with restriction: >= 2
+      foo.2: Availability condition not satisfied

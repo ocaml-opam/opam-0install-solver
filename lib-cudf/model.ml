@@ -223,7 +223,9 @@ module Make (Context : S.CONTEXT) = struct
     | RealImpl a, RealImpl b -> compare (a.pkg.Cudf.version : int) b.pkg.Cudf.version
     | VirtualImpl (ia, _), VirtualImpl (ib, _) -> compare (ia : int) ib
     | Reject a, Reject b -> compare (snd a : int) (snd b)
-    | a, b -> compare a b
+    | (RealImpl _ | Reject _ | VirtualImpl _ | Dummy),
+      (RealImpl _ | Reject _ | VirtualImpl _ | Dummy)
+      -> compare b a
 
   let user_restrictions = function
     | Virtual _ -> None

@@ -234,7 +234,9 @@ module Make (Context : S.CONTEXT) = struct
     | RealImpl a, RealImpl b -> OpamPackage.compare a.pkg b.pkg
     | VirtualImpl (ia, _), VirtualImpl (ib, _) -> compare (ia : int) ib
     | Reject a, Reject b -> OpamPackage.compare a b
-    | a, b -> compare b a
+    | (RealImpl _ | Reject _ | VirtualImpl _ | Dummy),
+      (RealImpl _ | Reject _ | VirtualImpl _ | Dummy)
+      -> compare b a
 
   let user_restrictions = function
     | Virtual _ -> None

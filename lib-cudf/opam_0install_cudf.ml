@@ -72,18 +72,58 @@ type diagnostics = Input.requirements   (* So we can run another solve *)
 let create ?(prefer_oldest=false) ~constraints universe =
   { Context.universe; constraints; prefer_oldest }
 
+let packages_of_result sels =
+  sels
+  |> Solver.Output.to_map |> Solver.Output.RoleMap.to_seq |> List.of_seq
+  |> List.filter_map (fun (_role, sel) -> Input.version (Solver.Output.unwrap sel))
+
+let tagged_with_avoid_version pkg =
+  List.exists (function
+    | "avoid-version", `Bool b -> b
+    | _ -> false
+  ) pkg.Cudf.pkg_extra
+
+let selection_contains_new_avoid_versions {Context.universe; _} selections =
+  packages_of_result selections |>
+  List.exists (fun (pkgname, v) ->
+    let pkg = Cudf.lookup_package universe (pkgname, v) in
+    let installed = Cudf.get_installed universe pkgname in
+    tagged_with_avoid_version pkg &&
+    not (List.exists tagged_with_avoid_version installed)
+  )
+
+let remove_new_avoid_versions {Context.universe; _} =
+  let new_universe = Cudf.empty_universe ~size:(Cudf.universe_size universe) () in
+  Cudf.iter_packages_by_name (fun pkg pkgs ->
+    let installed = Cudf.get_installed universe pkg in
+    let installed_with_avoid_version = List.exists tagged_with_avoid_version installed in
+    if installed_with_avoid_version then
+      List.iter (Cudf.add_package new_universe) pkgs
+    else
+      List.iter (fun pkg ->
+        if not (tagged_with_avoid_version pkg) then
+          Cudf.add_package new_universe pkg
+      ) pkgs
+  ) universe;
+  new_universe
+
 let solve context pkgs =
   let req = requirements ~context pkgs in
   match Solver.do_solve ~closest_match:false req with
-  | Some sels -> Ok sels
+  | Some sels ->
+      if selection_contains_new_avoid_versions context sels then
+        Ok sels
+      else
+        let universe_without_new_avoid_versions = remove_new_avoid_versions context in
+        let context = { context with Context.universe = universe_without_new_avoid_versions } in
+        let req = requirements ~context pkgs in
+        begin match Solver.do_solve ~closest_match:false req with
+        | Some sels -> Ok sels
+        | None -> Ok sels
+        end
   | None -> Error req
 
 let diagnostics ?verbose req =
   Solver.do_solve req ~closest_match:true
   |> Option.get
   |> Diagnostics.get_failure_reason ?verbose
-
-let packages_of_result sels =
-  sels
-  |> Solver.Output.to_map |> Solver.Output.RoleMap.to_seq |> List.of_seq
-  |> List.filter_map (fun (_role, sel) -> Input.version (Solver.Output.unwrap sel))

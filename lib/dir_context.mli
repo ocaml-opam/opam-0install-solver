@@ -8,6 +8,7 @@ include S.CONTEXT
 val std_env :
   ?ocaml_native:bool ->
   ?sys_ocaml_version:string ->
+  ?opam_version:string ->
   arch:string ->
   os:string ->
   os_distribution:string ->
@@ -17,7 +18,9 @@ val std_env :
   (string -> OpamVariable.variable_contents option)
 (** [std_env ~arch ~os ~os_distribution ~os_family ~os_version] is an
     environment function that returns the given values for the standard opam
-    variables, and [None] for anything else. *)
+    variables, and [None] for anything else.
+    If [opam_version] is not provided, use the version of the linked opam
+    library. *)
 
 val create :
   ?prefer_oldest:bool ->

@@ -42,6 +42,7 @@ let dev = OpamPackage.Version.of_string "dev"
 let std_env
     ?(ocaml_native=true)
     ?sys_ocaml_version
+    ?opam_version
     ~arch ~os ~os_distribution ~os_family ~os_version
     () =
   function
@@ -50,7 +51,7 @@ let std_env
   | "os-distribution" -> Some (OpamTypes.S os_distribution)
   | "os-version" -> Some (OpamTypes.S os_version)
   | "os-family" -> Some (OpamTypes.S os_family)
-  | "opam-version"  -> Some (OpamVariable.string OpamVersion.(to_string current))
+  | "opam-version"  -> Some (OpamVariable.S (Option.value ~default:OpamVersion.(to_string current) opam_version))
   | "sys-ocaml-version" -> sys_ocaml_version |> Option.map (fun v -> OpamTypes.S v)
   | "ocaml:native" -> Some (OpamTypes.B ocaml_native)
   | "enable-ocaml-beta-repository" -> None      (* Fake variable? *)

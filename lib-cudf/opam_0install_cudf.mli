@@ -6,6 +6,7 @@ type diagnostics
 
 val create :
   ?prefer_oldest:bool ->
+  ?handle_avoid_version:bool ->
   constraints:(Cudf_types.pkgname * (Cudf_types.relop * Cudf_types.version)) list ->
   Cudf.universe ->
   t

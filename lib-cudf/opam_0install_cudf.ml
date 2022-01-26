@@ -17,9 +17,9 @@ module Context = struct
 
   let version_compare t pkg1 pkg2 =
     if t.prefer_oldest then
-      compare (pkg1.Cudf.version : int) pkg2.Cudf.version
+      Int.compare pkg1.Cudf.version pkg2.Cudf.version
     else
-      compare (pkg2.Cudf.version : int) pkg1.Cudf.version
+      Int.compare pkg2.Cudf.version pkg1.Cudf.version
 
   let candidates t name =
     let user_constraints = user_restrictions t name in

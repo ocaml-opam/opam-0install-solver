@@ -66,7 +66,7 @@ module Make (Context : S.CONTEXT) = struct
     let compare a b =
       match a, b with
       | Real a, Real b -> String.compare a.name b.name
-      | Virtual (a, _), Virtual (b, _) -> compare (a : int) b
+      | Virtual (a, _), Virtual (b, _) -> Int.compare a b
       | Real _, Virtual _ -> -1
       | Virtual _, Real _ -> 1
   end
@@ -220,9 +220,9 @@ module Make (Context : S.CONTEXT) = struct
 
   let compare_version a b =
     match a, b with
-    | RealImpl a, RealImpl b -> compare (a.pkg.Cudf.version : int) b.pkg.Cudf.version
-    | VirtualImpl (ia, _), VirtualImpl (ib, _) -> compare (ia : int) ib
-    | Reject a, Reject b -> compare (snd a : int) (snd b)
+    | RealImpl a, RealImpl b -> Int.compare a.pkg.Cudf.version b.pkg.Cudf.version
+    | VirtualImpl (ia, _), VirtualImpl (ib, _) -> Int.compare ia ib
+    | Reject a, Reject b -> Int.compare (snd a) (snd b)
     | (RealImpl _ | Reject _ | VirtualImpl _ | Dummy),
       (RealImpl _ | Reject _ | VirtualImpl _ | Dummy)
       -> compare b a

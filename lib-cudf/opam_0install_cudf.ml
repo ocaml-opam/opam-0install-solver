@@ -5,6 +5,7 @@ module Context = struct
     universe : Cudf.universe;
     constraints : (Cudf_types.pkgname * (Cudf_types.relop * Cudf_types.version)) list;
     prefer_oldest : bool;
+    fresh_id : int ref;
   }
 
   let user_restrictions t name =
@@ -51,6 +52,10 @@ module Context = struct
 
   let pp_rejection f = function
     | UserConstraint (name, c) -> Format.fprintf f "Rejected by user-specified constraint %s%s" name (print_constr c)
+
+  let fresh_id {fresh_id; _} =
+    incr fresh_id;
+    !fresh_id
 end
 
 module Input = Model.Make(Context)
@@ -58,7 +63,7 @@ module Input = Model.Make(Context)
 let requirements ~context pkgs =
   let role =
     let impl = Input.virtual_impl ~context ~depends:pkgs () in
-    Input.virtual_role [impl]
+    Input.virtual_role ~context [impl]
   in
   { Input.role; command = None }
 
@@ -70,7 +75,7 @@ type selections = Solver.Output.t
 type diagnostics = Input.requirements   (* So we can run another solve *)
 
 let create ?(prefer_oldest=false) ~constraints universe =
-  { Context.universe; constraints; prefer_oldest }
+  { Context.universe; constraints; prefer_oldest; fresh_id = ref 0 }
 
 let solve context pkgs =
   let req = requirements ~context pkgs in

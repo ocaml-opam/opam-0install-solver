@@ -1,3 +1,16 @@
+let tagged_with_avoid_version pkg =
+  List.exists (function
+    | "avoid-version", `Bool b -> b
+    | _ -> false
+  ) pkg.Cudf.pkg_extra
+
+let version_rev_compare ~prefer_oldest pkg1 pkg2 =
+  let rev cmp = if prefer_oldest then cmp else -cmp in
+  match tagged_with_avoid_version pkg1, tagged_with_avoid_version pkg2 with
+  | true, true | false, false -> rev (Int.compare pkg1.Cudf.version pkg2.Cudf.version)
+  | true, false -> 1
+  | false, true -> -1
+
 module Context = struct
   type rejection = UserConstraint of Cudf_types.vpkg
 
@@ -16,19 +29,14 @@ module Context = struct
         acc
     ) [] t.constraints
 
-  let version_compare t pkg1 pkg2 =
-    if t.prefer_oldest then
-      Int.compare pkg1.Cudf.version pkg2.Cudf.version
-    else
-      Int.compare pkg2.Cudf.version pkg1.Cudf.version
-
   let candidates t name =
     let user_constraints = user_restrictions t name in
     match Cudf.lookup_packages t.universe name with
     | [] ->
         [] (* Package not found *)
     | versions ->
-        List.fast_sort (version_compare t) versions (* Higher versions are preferred. *)
+        let prefer_oldest = t.prefer_oldest in
+        List.fast_sort (version_rev_compare ~prefer_oldest) versions (* Higher versions are preferred. *)
         |> List.map (fun pkg ->
           let rec check_constr = function
             | [] -> (pkg.Cudf.version, Ok pkg)

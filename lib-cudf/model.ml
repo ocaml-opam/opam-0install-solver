@@ -73,22 +73,16 @@ module Make (Context : S.CONTEXT) = struct
 
   let role context name = Real { context; name }
 
-  let fresh_id =
-    let i = ref 0 in
-    fun () ->
-      incr i;
-      !i
-
   let virtual_impl ~context ~depends () =
     let depends = depends |> List.map (fun (name, importance) ->
         let drole = role context name in
         let importance = (importance :> [ `Essential | `Recommended | `Restricts ]) in
         { drole; importance; restrictions = []}
       ) in
-    VirtualImpl (fresh_id (), depends)
+    VirtualImpl (Context.fresh_id context, depends)
 
-  let virtual_role impls =
-    Virtual (fresh_id (), impls)
+  let virtual_role ~context impls =
+    Virtual (Context.fresh_id context, impls)
 
   type command = |          (* We don't use 0install commands anywhere *)
   type command_name = private string
@@ -126,13 +120,13 @@ module Make (Context : S.CONTEXT) = struct
       | x::(_::_ as y) -> aux [x] @ aux y
       | [o] ->
         let impls = group_ors o in
-        let drole = virtual_role impls in
+        let drole = virtual_role ~context impls in
         (* Essential because we must apply a restriction, even if its
            components are only restrictions. *)
         [{ drole; restrictions = []; importance = `Essential }]
     and group_ors = function
       | x::(_::_ as y) -> group_ors [x] @ group_ors y
-      | [expr] -> [VirtualImpl (fresh_id (), aux [[expr]])]
+      | [expr] -> [VirtualImpl (Context.fresh_id context, aux [[expr]])]
       | [] -> [Reject (pname, pver)]
     in
     aux deps

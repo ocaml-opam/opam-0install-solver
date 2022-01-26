@@ -25,7 +25,7 @@ module Make (Context : S.CONTEXT) : sig
   (** [version impl] is the Opam package for [impl], if any.
       Virtual and dummy implementations return [None]. *)
 
-  val virtual_role : impl list -> Role.t
+  val virtual_role : context:Context.t -> impl list -> Role.t
   (** [virtual_role impls] is a virtual package name with candidates [impls].
       This is used if the user requests multiple packages on the command line
       (the single [impl] will also be virtual). *)

@@ -7,6 +7,7 @@
   packages/main/main.1/opam
   packages/foo/foo.1/opam
   packages/foo/foo.2/opam)
+ (package opam-0install)
  (action
   (with-stdout-to
    test_diagnostics.output

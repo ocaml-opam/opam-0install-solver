@@ -54,5 +54,6 @@ the CUDF interface.
 ")
  (depends
   cudf
-  (ocaml (>= 4.10.0))
-  0install-solver))
+  (ocaml (>= 4.08.0))
+  0install-solver
+  (alcotest :with-test)))

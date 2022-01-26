@@ -1,0 +1,4 @@
+(test
+ (name test)
+ (package opam-0install-cudf)
+ (libraries alcotest opam-0install-cudf))

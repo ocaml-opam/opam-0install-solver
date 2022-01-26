@@ -23,8 +23,9 @@ bug-reports: "https://github.com/ocaml-opam/opam-0install-solver/issues"
 depends: [
   "dune" {>= "2.7"}
   "cudf"
-  "ocaml" {>= "4.10.0"}
+  "ocaml" {>= "4.08.0"}
   "0install-solver"
+  "alcotest" {with-test}
   "odoc" {with-doc}
 ]
 build: [

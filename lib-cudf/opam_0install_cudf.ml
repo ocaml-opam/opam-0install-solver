@@ -3,12 +3,13 @@ type context = {
   constraints : (Cudf_types.pkgname * (Cudf_types.relop * Cudf_types.version)) list;
   prefer_oldest : bool;
   handle_avoid_version : bool;
+  keep_installed : bool;
   fresh_id : int ref;
 }
 
 let tagged_with_avoid_version pkg =
   List.exists (function
-    | "avoid-version", `Bool b -> b
+    | "avoid-version", `Int n -> n > 0
     | _ -> false
   ) pkg.Cudf.pkg_extra
 
@@ -19,11 +20,20 @@ let version_rev_compare context pkg1 pkg2 =
     else
       Int.compare pkg2.Cudf.version pkg1.Cudf.version
   in
-  if context.handle_avoid_version then
-    match tagged_with_avoid_version pkg1, tagged_with_avoid_version pkg2 with
+  let rev_cmp () =
+    if context.handle_avoid_version then
+      match tagged_with_avoid_version pkg1, tagged_with_avoid_version pkg2 with
+      | true, true | false, false -> rev_cmp ()
+      | true, false -> 1
+      | false, true -> -1
+    else
+      rev_cmp ()
+  in
+  if context.keep_installed then
+    match pkg1.Cudf.installed, pkg2.Cudf.installed with
+    | true, false -> -1
+    | false, true -> 1
     | true, true | false, false -> rev_cmp ()
-    | true, false -> 1
-    | false, true -> -1
   else
     rev_cmp ()
 
@@ -92,8 +102,8 @@ type t = Context.t
 type selections = Solver.Output.t
 type diagnostics = Input.requirements   (* So we can run another solve *)
 
-let create ?(prefer_oldest=false) ?(handle_avoid_version=false) ~constraints universe =
-  { universe; constraints; prefer_oldest; handle_avoid_version; fresh_id = ref 0 }
+let create ?(prefer_oldest=false) ?(handle_avoid_version=false) ?(keep_installed=false) ~constraints universe =
+  { universe; constraints; prefer_oldest; handle_avoid_version; keep_installed; fresh_id = ref 0 }
 
 let solve context pkgs =
   let req = requirements ~context pkgs in

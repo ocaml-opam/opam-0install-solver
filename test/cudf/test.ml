@@ -21,8 +21,8 @@ let universe =
     {Cudf.default_package with package = "d"; version = 4; pkg_extra = [("avoid-version", `Bool true)]};
   ]
 
-let solve ?prefer_oldest req =
-  let x = Opam_0install_cudf.create ?prefer_oldest ~constraints:[] universe in
+let solve ?prefer_oldest ?handle_avoid_version req =
+  let x = Opam_0install_cudf.create ?prefer_oldest ?handle_avoid_version ~constraints:[] universe in
   match Opam_0install_cudf.solve x req with
   | Ok sel -> Ok (Opam_0install_cudf.packages_of_result sel)
   | Error diag -> Error (Opam_0install_cudf.diagnostics ~verbose:true diag)
@@ -45,22 +45,22 @@ let simple_avoid_1 () =
 let oldest_avoid_1 () =
   Alcotest.(check (result (list (pair string int)) string))
     "equal" (Ok [("b", 1)])
-    (solve ~prefer_oldest:true [("b", `Essential)])
+    (solve ~prefer_oldest:true ~handle_avoid_version:true [("b", `Essential)])
 
 let simple_avoid_2 () =
   Alcotest.(check (result (list (pair string int)) string))
     "equal" (Ok [("c", 4)])
-    (solve [("c", `Essential)])
+    (solve ~handle_avoid_version:true [("c", `Essential)])
 
 let oldest_avoid_2 () =
   Alcotest.(check (result (list (pair string int)) string))
     "equal" (Ok [("c", 2)])
-    (solve ~prefer_oldest:true [("c", `Essential)])
+    (solve ~prefer_oldest:true ~handle_avoid_version:true [("c", `Essential)])
 
 let simple_avoid_3 () =
   Alcotest.(check (result (list (pair string int)) string))
     "equal" (Ok [("d", 3)])
-    (solve [("d", `Essential)])
+    (solve ~handle_avoid_version:true [("d", `Essential)])
 
 let oldest_avoid_3 () =
   Alcotest.(check (result (list (pair string int)) string))

@@ -4,27 +4,67 @@ let tagged_with_avoid_version pkg =
     | _ -> false
   ) pkg.Cudf.pkg_extra
 
-let version_rev_compare ~prefer_oldest ~handle_avoid_version =
+let version_rev_compare ~prefer_oldest ~handle_avoid_version ~prefer_installed =
   (* Unrolled for performance purpose *)
-  if prefer_oldest then
-    if handle_avoid_version then
+  match prefer_oldest, handle_avoid_version, prefer_installed with
+  | true, true, true ->
       fun pkg1 pkg2 ->
-        match tagged_with_avoid_version pkg1, tagged_with_avoid_version pkg2 with
+        begin match pkg1.Cudf.installed, pkg2.Cudf.installed with
+        | true, true | false, false ->
+            begin match tagged_with_avoid_version pkg1, tagged_with_avoid_version pkg2 with
+            | true, true | false, false -> Int.compare pkg1.Cudf.version pkg2.Cudf.version
+            | true, false -> 1
+            | false, true -> -1
+            end
+        | true, false -> -1
+        | false, true -> 1
+        end
+  | true, true, false ->
+      fun pkg1 pkg2 ->
+        begin match tagged_with_avoid_version pkg1, tagged_with_avoid_version pkg2 with
         | true, true | false, false -> Int.compare pkg1.Cudf.version pkg2.Cudf.version
         | true, false -> 1
         | false, true -> -1
-    else
+        end
+  | true, false, false ->
       fun pkg1 pkg2 ->
         Int.compare pkg1.Cudf.version pkg2.Cudf.version
-  else if handle_avoid_version then
-    fun pkg1 pkg2 ->
-      match tagged_with_avoid_version pkg1, tagged_with_avoid_version pkg2 with
-      | true, true | false, false -> Int.compare pkg2.Cudf.version pkg1.Cudf.version
-      | true, false -> 1
-      | false, true -> -1
-  else
-    fun pkg1 pkg2 ->
-      Int.compare pkg2.Cudf.version pkg1.Cudf.version
+  | true, false, true ->
+      fun pkg1 pkg2 ->
+        begin match pkg1.Cudf.installed, pkg2.Cudf.installed with
+        | true, true | false, false -> Int.compare pkg1.Cudf.version pkg2.Cudf.version
+        | true, false -> -1
+        | false, true -> 1
+        end
+  | false, true, true ->
+      fun pkg1 pkg2 ->
+        begin match pkg1.Cudf.installed, pkg2.Cudf.installed with
+        | true, true | false, false ->
+            begin match tagged_with_avoid_version pkg1, tagged_with_avoid_version pkg2 with
+            | true, true | false, false -> Int.compare pkg2.Cudf.version pkg1.Cudf.version
+            | true, false -> 1
+            | false, true -> -1
+            end
+        | true, false -> -1
+        | false, true -> 1
+        end
+  | false, true, false ->
+      fun pkg1 pkg2 ->
+        begin match tagged_with_avoid_version pkg1, tagged_with_avoid_version pkg2 with
+        | true, true | false, false -> Int.compare pkg2.Cudf.version pkg1.Cudf.version
+        | true, false -> 1
+        | false, true -> -1
+        end
+  | false, false, true ->
+      fun pkg1 pkg2 ->
+        begin match pkg1.Cudf.installed, pkg2.Cudf.installed with
+        | true, true | false, false -> Int.compare pkg2.Cudf.version pkg1.Cudf.version
+        | true, false -> -1
+        | false, true -> 1
+        end
+  | false, false, false ->
+      fun pkg1 pkg2 ->
+        Int.compare pkg2.Cudf.version pkg1.Cudf.version
 
 module Context = struct
   type rejection = UserConstraint of Cudf_types.vpkg
@@ -96,12 +136,12 @@ type t = Context.t
 type selections = Solver.Output.t
 type diagnostics = Input.requirements   (* So we can run another solve *)
 
-let create ?(prefer_oldest=false) ?(handle_avoid_version=true) ~constraints universe =
+let create ?(prefer_oldest=false) ?(handle_avoid_version=true) ?(prefer_installed=false) ~constraints universe =
   {
     Context.universe;
     constraints;
     fresh_id = ref 0;
-    version_rev_compare = version_rev_compare ~prefer_oldest ~handle_avoid_version;
+    version_rev_compare = version_rev_compare ~prefer_oldest ~handle_avoid_version ~prefer_installed;
   }
 
 let solve context pkgs =

@@ -7,6 +7,7 @@ type diagnostics
 val create :
   ?prefer_oldest:bool ->
   ?handle_avoid_version:bool ->
+  ?prefer_installed:bool ->
   constraints:(Cudf_types.pkgname * (Cudf_types.relop * Cudf_types.version)) list ->
   Cudf.universe ->
   t
@@ -16,7 +17,13 @@ val create :
     @param prefer_oldest if [true] the solver is set to return the least
     up-to-date version of each package, if a solution exists. This is [false] by
     default.
-    @before 0.4 the [prefer_oldest] parameter did not exist. *)
+    @before 0.4 the [prefer_oldest] parameter did not exist.
+
+    @param prefer_installed if [true] the solver will try to prioritize keeping
+    the versions of packages installed at their current version instead of
+    the latest possible version.
+    This is [false] by default.
+    @before 0.5 the [prefer_installed] parameter did not exist. *)
 
 val solve :
   t ->

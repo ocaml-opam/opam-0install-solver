@@ -94,10 +94,14 @@ let verbose =
 
 let cmd =
   let doc = "Select opam packages using 0install backend" in
-  Term.(const select $ verbose $ with_test $ prefer_oldest $ Arg.value spec),
-  Term.info "opam-0install" ~doc
+  let info = Cmd.info "opam-0install" ~doc in
+  let term =
+    Term.(const select $ verbose $ with_test $ prefer_oldest $ Arg.value spec)
+  in
+  Cmd.v info term
 
 let () =
-  match Term.eval cmd with
-  | `Ok reason -> exit (OpamStd.Sys.get_exit_code reason)
-  | `Error _ | `Help | `Version as x -> Term.exit x
+  match Cmd.eval_value cmd with
+  | Ok (`Ok reason) -> exit (OpamStd.Sys.get_exit_code reason)
+  | Ok (`Help | `Version) -> exit 0
+  | Error (`Parse | `Term | `Exn) -> exit 1

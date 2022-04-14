@@ -116,9 +116,10 @@ let new_csv = Arg.(required @@ (pos 1 (some file)) None @@ info ~docv:"NEW.csv" 
 let filter = Arg.(value @@ (opt (list string)) [] @@ info ~docv:"NAME" ["ignore"])
 let hide_deps = Arg.(value @@ flag @@ info ~docv:"NAME" ["hide-deps"])
 
-let cmd : unit Term.t * Term.info =
+let cmd : unit Cmd.t =
   let doc = "compare results from dump command" in
-  Term.(const diff $ filter $ hide_deps $ old_csv $ new_csv),
-  Term.info "diff" ~doc
+  let info = Cmd.info "diff" ~doc in
+  let term = Term.(const diff $ filter $ hide_deps $ old_csv $ new_csv) in
+  Cmd.v info term
 
-let () = Term.(exit @@ eval cmd)
+let () = exit @@ Cmd.eval cmd

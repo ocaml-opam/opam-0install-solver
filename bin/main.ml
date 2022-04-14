@@ -2,7 +2,8 @@ module Solver = Opam_0install.Solver.Make(Opam_0install.Switch_context)
 
 let pp_pkg = Fmt.of_to_string OpamPackage.to_string
 
-let select verbose with_test prefer_oldest = function
+let select verbose with_test prefer_oldest spec =
+  let result = match spec with
   | [] -> OpamConsole.error "No packages requested!"; `Bad_arguments
   | spec ->
     let t0 = Unix.gettimeofday () in
@@ -43,6 +44,8 @@ let select verbose with_test prefer_oldest = function
       print_endline (Solver.diagnostics ~verbose problem);
       OpamConsole.note "Eliminated all possibilities in %.2f s" (t1 -. t0);
       `No_solution
+  in
+  OpamStd.Sys.get_exit_code result
 
 open Cmdliner
 
@@ -94,10 +97,11 @@ let verbose =
 
 let cmd =
   let doc = "Select opam packages using 0install backend" in
-  Term.(const select $ verbose $ with_test $ prefer_oldest $ Arg.value spec),
-  Term.info "opam-0install" ~doc
+  let info = Cmd.info "opam-0install" ~doc in
+  let term =
+    Term.(const select $ verbose $ with_test $ prefer_oldest $ Arg.value spec)
+  in
+  Cmd.v info term
 
 let () =
-  match Term.eval cmd with
-  | `Ok reason -> exit (OpamStd.Sys.get_exit_code reason)
-  | `Error _ | `Help | `Version as x -> Term.exit x
+  exit @@ Cmd.eval' cmd

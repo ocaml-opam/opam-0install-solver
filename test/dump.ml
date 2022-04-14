@@ -123,14 +123,15 @@ let jobs = Arg.(required @@ (opt (some int)) None @@ info ~docv:"N" ["j"; "jobs"
 
 let root_dir = Arg.(value @@ (opt (some dir)) None @@ info ~docv:"DIR" ["root"])
 
-let cmd : unit Term.t * Term.info =
+let cmd : unit Cmd.t =
   let doc = "solve for every package in a repository" in
   let man = [
     `S Manpage.s_description;
     `P "$(tname) performs a solve for every package name in a repository,
         writing the results to a CSV file for analysis.";
   ] in
-  Term.(const run $ jobs $ root_dir $ output),
-  Term.info "dump" ~doc ~man
+  let info = Cmd.info "dump" ~doc ~man in
+  let term = Term.(const run $ jobs $ root_dir $ output) in
+  Cmd.v info term
 
-let () = Term.(exit @@ eval cmd)
+let () = exit @@ Cmd.eval cmd

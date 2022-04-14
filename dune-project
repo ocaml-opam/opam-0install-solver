@@ -27,7 +27,7 @@ This package uses 0install's solver algorithm with opam packages.
 ")
  (depends
   (fmt (>= 0.8.7))
-  cmdliner
+  (cmdliner (>= 1.1.0))
   (opam-state (>= 2.1.0~rc))
   (ocaml (>= 4.08.0))
   0install-solver

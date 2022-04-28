@@ -1,3 +1,21 @@
+v0.4.3 (28/04/2022)
+-------------------
+
+- Add `?opam_version` to `Dir_context.std_env` (@emillon #36).
+  It defaults to the version of opam libraries, but in some cases (e.g.
+  ocaml-ci) it is useful to inject a value that comes from an external
+  opam process.
+
+- Sort `Reject` after `RealImpl` (@emillon #33).
+  This improves error messages by displaying Rejects first.
+
+- Expose diagnostics rolemap in Solver (@NathanReb #31).
+  Allows library users to provide extra help on error.
+
+- Cmdliner 1.1.0 compatibility (@dra27 #40)
+
+- Fix compiler warnings from new fmt (@talex5 #32).
+
 v0.4.2 (16/06/2021)
 -------------------
 

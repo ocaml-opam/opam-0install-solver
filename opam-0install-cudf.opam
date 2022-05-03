@@ -25,6 +25,7 @@ depends: [
   "cudf"
   "ocaml" {>= "4.08.0"}
   "0install-solver"
+  "alcotest" {with-test}
   "odoc" {with-doc}
 ]
 build: [

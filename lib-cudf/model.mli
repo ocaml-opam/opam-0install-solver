@@ -17,7 +17,47 @@
 val fop : Cudf_types.relop -> int -> int -> bool
 
 module Make (Context : S.CONTEXT) : sig
+  type restriction = {
+    kind : [ `Ensure | `Prevent ];
+    expr : (Cudf_types.relop * Cudf_types.version) list; (* TODO: might not be a list *)
+    (* NOTE: each list is a raw or the list is an OR case (see Cudf_types.vpkgforula) *)
+  }
+
+  type real_role = {
+    context : Context.t;
+    name : Cudf_types.pkgname;
+  }
+
+  type role =
+    | Real of real_role               (* A role is usually an opam package name *)
+    | Virtual of int * impl list      (* (int just for sorting) *)
+  and real_impl = {
+    pkg : Cudf.package;
+    requires : dependency list;
+  }
+  and dependency = {
+    drole : role;
+    importance : [ `Essential | `Recommended | `Restricts ];
+    restrictions : restriction list;
+  }
+  and impl =
+    | RealImpl of real_impl                     (* An implementation is usually an opam package *)
+    | VirtualImpl of int * dependency list      (* (int just for sorting) *)
+    | Reject of (Cudf_types.pkgname * Cudf_types.version)
+    | Dummy                                     (* Used for diagnostics *)
+
+  module Role : sig
+    type t = role
+    val pp : Format.formatter -> t -> unit
+    val compare : t -> t -> int
+  end
+
   include Zeroinstall_solver.S.SOLVER_INPUT
+    with type restriction := restriction
+     and type impl := impl
+     and type dependency := dependency
+     and type rejection = Context.rejection
+     and module Role := Role
 
   val role : Context.t -> Cudf_types.pkgname -> Role.t
 

@@ -62,6 +62,11 @@ module Raw_diagnostics : sig
     | DiagnosticsFailure of string
 
   type reject = impl * rejection_reason
+  type candidates = reject list * [`All_unusable | `No_candidates | `Conflicts]
+
+  type outcome =
+    | SelectedImpl of impl
+    | RejectedCandidates of candidates
 
   type note =
     | UserRequested of restriction
@@ -72,9 +77,8 @@ module Raw_diagnostics : sig
 
   type t = {
     role : role;
-    selected_impl : impl option;
+    outcome : outcome;
     notes : note list;
-    candidates : (reject list * [`All_unusable | `No_candidates | `Conflicts]) option;
   }
 
   val get : diagnostics -> t list

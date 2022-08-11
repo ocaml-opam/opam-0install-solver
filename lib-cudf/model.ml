@@ -66,18 +66,12 @@ module Make (Context : S.CONTEXT) = struct
     let compare a b =
       match a, b with
       | Real a, Real b -> String.compare a.name b.name
-      | Virtual (a, _), Virtual (b, _) -> compare (a : int) b
+      | Virtual (a, _), Virtual (b, _) -> Int.compare a b
       | Real _, Virtual _ -> -1
       | Virtual _, Real _ -> 1
   end
 
   let role context name = Real { context; name }
-
-  let fresh_id =
-    let i = ref 0 in
-    fun () ->
-      incr i;
-      !i
 
   let virtual_impl ~context ~depends () =
     let depends = depends |> List.map (fun (name, importance) ->
@@ -85,10 +79,10 @@ module Make (Context : S.CONTEXT) = struct
         let importance = (importance :> [ `Essential | `Recommended | `Restricts ]) in
         { drole; importance; restrictions = []}
       ) in
-    VirtualImpl (fresh_id (), depends)
+    VirtualImpl (Context.fresh_id context, depends)
 
-  let virtual_role impls =
-    Virtual (fresh_id (), impls)
+  let virtual_role ~context impls =
+    Virtual (Context.fresh_id context, impls)
 
   type command = |          (* We don't use 0install commands anywhere *)
   type command_name = private string
@@ -126,13 +120,13 @@ module Make (Context : S.CONTEXT) = struct
       | x::(_::_ as y) -> aux [x] @ aux y
       | [o] ->
         let impls = group_ors o in
-        let drole = virtual_role impls in
+        let drole = virtual_role ~context impls in
         (* Essential because we must apply a restriction, even if its
            components are only restrictions. *)
         [{ drole; restrictions = []; importance = `Essential }]
     and group_ors = function
       | x::(_::_ as y) -> group_ors [x] @ group_ors y
-      | [expr] -> [VirtualImpl (fresh_id (), aux [[expr]])]
+      | [expr] -> [VirtualImpl (Context.fresh_id context, aux [[expr]])]
       | [] -> [Reject (pname, pver)]
     in
     aux deps
@@ -220,9 +214,9 @@ module Make (Context : S.CONTEXT) = struct
 
   let compare_version a b =
     match a, b with
-    | RealImpl a, RealImpl b -> compare (a.pkg.Cudf.version : int) b.pkg.Cudf.version
-    | VirtualImpl (ia, _), VirtualImpl (ib, _) -> compare (ia : int) ib
-    | Reject a, Reject b -> compare (snd a : int) (snd b)
+    | RealImpl a, RealImpl b -> Int.compare a.pkg.Cudf.version b.pkg.Cudf.version
+    | VirtualImpl (ia, _), VirtualImpl (ib, _) -> Int.compare ia ib
+    | Reject a, Reject b -> Int.compare (snd a) (snd b)
     | (RealImpl _ | Reject _ | VirtualImpl _ | Dummy),
       (RealImpl _ | Reject _ | VirtualImpl _ | Dummy)
       -> compare b a

@@ -16,4 +16,6 @@ module type CONTEXT = sig
   val user_restrictions : t -> Cudf_types.pkgname -> (Cudf_types.relop * Cudf_types.version) list
   (** [user_restrictions t pkg] is the user's constraint on [pkg], if any. This is just
       used for diagnostics; you still have to filter them out yourself in [candidates]. *)
+
+  val fresh_id : t -> int
 end

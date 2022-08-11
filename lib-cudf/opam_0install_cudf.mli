@@ -6,6 +6,7 @@ type diagnostics
 
 val create :
   ?prefer_oldest:bool ->
+  ?handle_avoid_version:bool -> (* TODO: Make it true by default on the next major breaking release *)
   constraints:(Cudf_types.pkgname * (Cudf_types.relop * Cudf_types.version)) list ->
   Cudf.universe ->
   t
@@ -13,9 +14,15 @@ val create :
     filtering them using [constraints].
 
     @param prefer_oldest if [true] the solver is set to return the least
-    up-to-date version of each package, if a solution exists. This is [false] by
-    default.
-    @before 0.4 the [prefer_oldest] parameter did not exist. *)
+    up-to-date version of each package, if a solution exists.
+    This is [false] by default.
+    @before 0.4 the [prefer_oldest] parameter did not exist.
+
+    @param handle_avoid_verison if [true] the solver is set to handle the
+    avoid-version flag that opam 2.1 introduced. This makes the solver try
+    its best to avoid the versions tagged with this flag.
+    This is [false] by default.
+    @before 0.5 the [handle_avoid_version] parameter did not exist. *)
 
 val solve :
   t ->

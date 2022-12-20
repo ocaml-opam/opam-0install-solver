@@ -16,6 +16,10 @@ let load t pkg =
 let user_restrictions t name =
   OpamPackage.Name.Map.find_opt name t.constraints
 
+let warn_unknown v =
+  let s = OpamVariable.Full.to_string v in
+  OpamConsole.warning "Unknown variable %S" s
+
 let env t pkg v =
   match List.mem v OpamPackageVar.predefined_depends_variables with
   | true -> None
@@ -26,7 +30,7 @@ let env t pkg v =
       match OpamVariable.Full.package v with
       | None -> (
         (* a local variable that is unknown *)
-        OpamConsole.warning "Unknown variable %S" (OpamVariable.Full.to_string v);
+        warn_unknown v;
         None)
       | Some pkg_name ->
         let installed_package = OpamPackage.Set.find_opt (fun package ->
@@ -41,7 +45,7 @@ let env t pkg v =
           let unscoped = OpamVariable.Full.(self (variable v)) in
           match OpamPackageVar.resolve_switch ~package t.st unscoped with
           | None ->
-            OpamConsole.warning "Unknown variable %S" (OpamVariable.Full.to_string v);
+            warn_unknown v;
             None
           | Some _ as resolved -> resolved
         )

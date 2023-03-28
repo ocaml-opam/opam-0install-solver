@@ -29,7 +29,7 @@ This package uses 0install's solver algorithm with opam packages.
   (fmt (>= 0.8.7))
   (cmdliner (>= 1.1.0))
   (opam-state (>= 2.1.0~rc))
-  (ocaml (>= 4.08.0))
+  (ocaml (>= 4.10.0))
   0install-solver
   (opam-file-format (>= 2.1.1))
   (opam-client :with-test)
@@ -54,5 +54,5 @@ the CUDF interface.
 ")
  (depends
   cudf
-  (ocaml (>= 4.08.0))
+  (ocaml (>= 4.10.0))
   0install-solver))

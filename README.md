@@ -52,6 +52,18 @@ You can also pass other packages and constraints here too, as with opam itself.
 newest possible version of `foo`, even if that means choosing an older version of `bar`
 (but it will choose an older version of `foo` if there is no other way to get `bar` at all).
 
+# Dependency graph
+
+You can also output a dot-graph showing the dependency graph of the selected packages:
+
+```bash
+opam-0install utop --dot --dot-prune=ocaml,base-threads,base-unix,base-bytes | tred | dot -Tsvg -o opam.svg
+```
+
+This produces a graph like this:
+
+![Graph of utop's selected dependencies](./doc/opam.svg)
+
 # Tests
 
 Running `make test` will run various tests (some fixed and some random) using

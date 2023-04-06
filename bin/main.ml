@@ -1,8 +1,6 @@
-module Solver = Opam_0install.Solver.Make(Opam_0install.Switch_context)
-
 let pp_pkg = Fmt.of_to_string OpamPackage.to_string
 
-let select verbose with_test prefer_oldest spec =
+let select verbose with_test prefer_oldest graph spec =
   let result = match spec with
   | [] -> OpamConsole.error "No packages requested!"; `Bad_arguments
   | spec ->
@@ -36,7 +34,10 @@ let select verbose with_test prefer_oldest spec =
     let t1 = Unix.gettimeofday () in
     match r with
     | Ok sels ->
-      Fmt.pr "%a@." Fmt.(list ~sep:(any " ") pp_pkg) (Solver.packages_of_result sels);
+      begin match graph with
+        | Some config -> Fmt.pr "%a@." (Graph.output config ~pkgs) sels
+        | None -> Fmt.pr "%a@." Fmt.(list ~sep:(any " ") pp_pkg) (Solver.packages_of_result sels)
+      end;
       OpamConsole.note "Solve took %.2f s" (t1 -. t0);
       `Success
     | Error problem ->
@@ -99,7 +100,7 @@ let cmd =
   let doc = "Select opam packages using 0install backend" in
   let info = Cmd.info "opam-0install" ~doc in
   let term =
-    Term.(const select $ verbose $ with_test $ prefer_oldest $ Arg.value spec)
+    Term.(const select $ verbose $ with_test $ prefer_oldest $ Graph.cmdliner $ Arg.value spec)
   in
   Cmd.v info term
 

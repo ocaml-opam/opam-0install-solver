@@ -2,6 +2,7 @@ include S.CONTEXT
 
 val create :
   ?prefer_oldest:bool ->
+  ?warn_on_unknown_variable:bool ->
   ?test:OpamPackage.Name.Set.t ->
   constraints:OpamFormula.version_constraint OpamTypes.name_map ->
   OpamStateTypes.unlocked OpamStateTypes.switch_state ->

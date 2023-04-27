@@ -6,6 +6,7 @@ type t = {
   constraints : OpamFormula.version_constraint OpamTypes.name_map;    (* User-provided constraints *)
   test : OpamPackage.Name.Set.t;
   prefer_oldest : bool;
+  warn_on_unknown_variable : bool;
 }
 
 let load t pkg =
@@ -20,7 +21,8 @@ let env t pkg v =
   if List.mem v OpamPackageVar.predefined_depends_variables then None
   else (
     let r = OpamPackageVar.resolve_switch ~package:pkg t.st v in
-    if r = None then OpamConsole.warning "Unknown variable %S" (OpamVariable.Full.to_string v);
+    if t.warn_on_unknown_variable && r = None then
+      OpamConsole.warning "Unknown variable %S" (OpamVariable.Full.to_string v);
     r
   )
 
@@ -58,6 +60,6 @@ let candidates t name =
 let pp_rejection f = function
   | UserConstraint x -> Fmt.pf f "Rejected by user-specified constraint %s" (OpamFormula.string_of_atom x)
 
-let create ?(prefer_oldest=false) ?(test=OpamPackage.Name.Set.empty) ~constraints st =
+let create ?(prefer_oldest=false) ?(warn_on_unknown_variable=true) ?(test=OpamPackage.Name.Set.empty) ~constraints st =
   let pkgs = Lazy.force st.OpamStateTypes.available_packages |> OpamPackage.to_map in
-  { st; pkgs; constraints; test; prefer_oldest }
+  { st; pkgs; constraints; test; prefer_oldest; warn_on_unknown_variable }

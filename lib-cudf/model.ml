@@ -1,5 +1,7 @@
 (* Note: changes to this file may require similar changes to lib/model.ml *)
 
+let id_key = Domain.DLS.new_key (fun () -> ref 0)
+
 let fop : Cudf_types.relop -> int -> int -> bool = function
   | `Eq -> (=)
   | `Neq -> (<>)
@@ -73,11 +75,10 @@ module Make (Context : S.CONTEXT) = struct
 
   let role context name = Real { context; name }
 
-  let fresh_id =
-    let i = ref 0 in
-    fun () ->
-      incr i;
-      !i
+  let fresh_id () =
+    let i = Domain.DLS.get id_key in
+    incr i;
+    !i
 
   let virtual_impl ~context ~depends () =
     let depends = depends |> List.map (fun (name, importance) ->

@@ -1,5 +1,7 @@
 (* Note: changes to this file may require similar changes to lib-cudf/model.ml *)
 
+let id_key = Domain.DLS.new_key (fun () -> ref 0)
+
 module Make (Context : S.CONTEXT) = struct
   (* Note: [OpamFormula.neg] doesn't work in the [Empty] case, so we just
      record whether to negate the result here. *)
@@ -64,11 +66,10 @@ module Make (Context : S.CONTEXT) = struct
 
   let role context name = Real { context; name }
 
-  let fresh_id =
-    let i = ref 0 in
-    fun () ->
-      incr i;
-      !i
+  let fresh_id () =
+    let i = Domain.DLS.get id_key in
+    incr i;
+    !i
 
   let virtual_impl ~context ~depends () =
     let depends = depends |> List.map (fun name ->

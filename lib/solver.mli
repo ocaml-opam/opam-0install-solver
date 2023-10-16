@@ -1,11 +1,12 @@
-module Make (C : S.CONTEXT) : sig
-  module Input : Zeroinstall_solver.S.SOLVER_INPUT with type rejection = C.rejection
+module Make (M : S.MONAD) (C : S.CONTEXT) : sig
+  module Input : Zeroinstall_solver.S.SOLVER_INPUT with type rejection = C(M).rejection
 
   module Solver : sig
     module Output : Zeroinstall_solver.S.SOLVER_RESULT with module Input = Input
   end
 
-  include S.SOLVER with type t = C.t and type selections = Solver.Output.t
+  (* include S.SOLVER with type t = C.t and type selections = Solver.Output.t *)
+  include module type of S.SOLVER(M)
 
   module Diagnostics : sig
     include module type of Zeroinstall_solver.Diagnostics(Solver.Output)

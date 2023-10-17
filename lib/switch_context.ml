@@ -1,4 +1,6 @@
-module Switch_context (M : S.MONAD) (C: S.CONTEXT) = struct
+module Switch_context (M : S.MONAD) = struct
+
+  module M = M
 
   type rejection = UserConstraint of OpamFormula.atom
 
@@ -17,6 +19,7 @@ module Switch_context (M : S.MONAD) (C: S.CONTEXT) = struct
 
   let user_restrictions t name =
     OpamPackage.Name.Map.find_opt name t.constraints
+    |> M.return
 
   let env t pkg v =
     if List.mem v OpamPackageVar.predefined_depends_variables then None
@@ -31,6 +34,7 @@ module Switch_context (M : S.MONAD) (C: S.CONTEXT) = struct
     f
     |> OpamFilter.partial_filter_formula (env t pkg)
     |> OpamFilter.filter_deps ~build:true ~post:true ~test ~doc:false ~dev:false ~default:false
+    |> M.return
 
   let sort_versions t versions =
     if t.prefer_oldest then
@@ -38,8 +42,10 @@ module Switch_context (M : S.MONAD) (C: S.CONTEXT) = struct
     else
       List.rev versions
 
+  let (>>=) = M.(>>=)
+
   let candidates t name =
-    let user_constraints = user_restrictions t name in
+    user_restrictions t name >>= (fun user_constraints ->
     match OpamPackage.Name.Map.find_opt name t.pkgs with
     | Some versions ->
       OpamPackage.Version.Set.elements versions
@@ -51,11 +57,11 @@ module Switch_context (M : S.MONAD) (C: S.CONTEXT) = struct
           | _ ->
             let opam = load t (OpamPackage.create name v) in
             (* Note: [OpamStateTypes.available_packages] filters out unavailable packages for us. *)
-            v, Ok opam
-        )
+            v, Ok opam)
+      |> M.return
     | None ->
       OpamConsole.log "opam-0install" "Package %S not found!" (OpamPackage.Name.to_string name);
-      []
+      M.return [])
 
   let pp_rejection f = function
     | UserConstraint x -> Fmt.pf f "Rejected by user-specified constraint %s" (OpamFormula.string_of_atom x)

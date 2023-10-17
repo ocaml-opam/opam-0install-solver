@@ -5,8 +5,13 @@ module type MONAD = sig
   val return : 'a -> 'a t
 end
 
-module type CONTEXT = functor (M : MONAD) -> sig
+module type CONTEXT = sig
   type t
+  module M : sig
+    type 'a t
+    val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
+    val return : 'a -> 'a t
+  end
 
   type rejection
   (** A reason why a package can't be used as input to the solver. e.g. it is
@@ -32,12 +37,18 @@ module type CONTEXT = functor (M : MONAD) -> sig
       if the platform is Linux. *)
 end
 
-module type SOLVER = functor (M : MONAD) -> sig
+module type SOLVER = sig
   type t
 
   type selections
 
   type diagnostics
+
+  module M : sig
+    type 'a t
+    val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
+    val return : 'a -> 'a t
+  end
 
   val solve : t -> OpamPackage.Name.t list -> (selections, diagnostics) result M.t
   (** [solve t package_names] finds a compatible set of package versions that

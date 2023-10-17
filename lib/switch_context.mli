@@ -1,5 +1,5 @@
-module Switch_context : functor (M : S.MONAD) -> functor (C : S.CONTEXT) -> sig
-  include module type of C(M)
+module Switch_context (M : S.MONAD) : sig
+  include S.CONTEXT
 
   val create :
     ?prefer_oldest:bool ->

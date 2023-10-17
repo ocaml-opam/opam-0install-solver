@@ -1,4 +1,6 @@
-module Dir_context (M : S.MONAD) (C: S.CONTEXT) = struct
+module Dir_context (M: S.MONAD) = struct
+  module M = M
+
   type rejection =
     | UserConstraint of OpamFormula.atom
     | Unavailable
@@ -38,6 +40,9 @@ module Dir_context (M : S.MONAD) (C: S.CONTEXT) = struct
   let user_restrictions t name =
     OpamPackage.Name.Map.find_opt name t.constraints
 
+  let user_restrictions t name =
+    M.return @@ user_restrictions t name
+
   let dev = OpamPackage.Version.of_string "dev"
 
   let std_env
@@ -72,6 +77,7 @@ module Dir_context (M : S.MONAD) (C: S.CONTEXT) = struct
     f
     |> OpamFilter.partial_filter_formula (env t pkg)
     |> OpamFilter.filter_deps ~build:true ~post:true ~test ~doc:false ~dev ~default:false
+    |> M.return
 
   let version_compare t v1 v2 =
     if t.prefer_oldest then
@@ -79,14 +85,16 @@ module Dir_context (M : S.MONAD) (C: S.CONTEXT) = struct
     else
       OpamPackage.Version.compare v2 v1
 
+  let (>>=) = M.(>>=)
+
   let candidates t name =
     match OpamPackage.Name.Map.find_opt name t.pins with
-    | Some (version, opam) -> [version, Ok opam]
+    | Some (version, opam) -> M.return [version, Ok opam]
     | None ->
       let versions_dir = t.packages_dir / OpamPackage.Name.to_string name in
       match list_dir versions_dir with
       | versions ->
-        let user_constraints = user_restrictions t name in
+        user_restrictions t name >>= (fun user_constraints ->
         versions
         |> List.filter_map (fun dir ->
             match OpamPackage.of_string_opt dir with
@@ -107,11 +115,11 @@ module Dir_context (M : S.MONAD) (C: S.CONTEXT) = struct
               | B false -> v, Error Unavailable
               | _ ->
                 OpamConsole.error "Available expression not a boolean: %s" (OpamFilter.to_string available);
-                v, Error Unavailable
-          )
+                v, Error Unavailable)
+          |> M.return)
       | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
         OpamConsole.log "opam-0install" "Package %S not found!" (OpamPackage.Name.to_string name);
-        []
+        M.return []
 
   let pp_rejection f = function
     | UserConstraint x -> Fmt.pf f "Rejected by user-specified constraint %s" (OpamFormula.string_of_atom x)

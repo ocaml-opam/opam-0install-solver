@@ -1,6 +1,6 @@
 (* Note: changes to this file may require similar changes to lib-cudf/model.ml *)
 
-module Make (M : S.MONAD) (Context : S.CONTEXT) = struct
+module Make (Context : S.CONTEXT) = struct
   (* Note: [OpamFormula.neg] doesn't work in the [Empty] case, so we just
      record whether to negate the result here. *)
   type restriction = {
@@ -9,7 +9,7 @@ module Make (M : S.MONAD) (Context : S.CONTEXT) = struct
   }
 
   type real_role = {
-    context : Context(M).t;
+    context : Context.t;
     name : OpamPackage.Name.t;
   }
 
@@ -17,7 +17,7 @@ module Make (M : S.MONAD) (Context : S.CONTEXT) = struct
     | Real of real_role               (* A role is usually an opam package name *)
     | Virtual of int * impl list      (* (int just for sorting) *)
   and real_impl = {
-    context : Context(M).t;
+    context : Context.t;
     pkg : OpamPackage.t;
     opam : OpamFile.OPAM.t;
     requires : dependency list;
@@ -135,8 +135,8 @@ module Make (M : S.MONAD) (Context : S.CONTEXT) = struct
     impls : impl list;
   }
 
-  module Context' = Context(M)
-  let (>>=) = M.(>>=)
+  let (>>=) = Context.M.(>>=)
+  let return = Context.M.return
 
   type machine_group = private string   (* We don't use machine groups because opam is source-only. *)
   let machine_group _impl = None
@@ -174,49 +174,49 @@ module Make (M : S.MONAD) (Context : S.CONTEXT) = struct
       )
 
   let rec m_all = function
-    | [] -> M.return []
-    | [x] -> x >>= fun x -> M.return [x]
+    | [] -> return []
+    | [x] -> x >>= fun x -> return [x]
     | x :: xs ->
       x >>= fun x ->
         m_all xs >>= fun xs ->
-          M.return (x::xs)
+          return (x::xs)
 
 
   (* Get all the candidates for a role. *)
   let implementations = function
-    | Virtual (_, impls) -> M.return { impls; replacement = None }
+    | Virtual (_, impls) -> return { impls; replacement = None }
     | Real role ->
       let context = role.context in
       let impls =
-        Context'.candidates context role.name
+        Context.candidates context role.name
         >>= (fun candidates ->
           candidates
           |> List.map (function
-              | _, Error _rejection -> M.return None
+              | _, Error _rejection -> return None
               | version, Ok opam ->
                 let pkg = OpamPackage.create role.name version in
                 (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
                 let requires =
                   let make_deps importance xform get =
-                    let deps = get opam |> Context'.filter_deps context pkg in
+                    let deps = get opam |> Context.filter_deps context pkg in
                     deps >>= (fun deps -> deps
                     |> xform
                     |> list_deps ~context ~importance
-                    |> M.return)
+                    |> return)
                   in
                   make_deps `Essential ensure OpamFile.OPAM.depends >>= (fun depends ->
                   make_deps `Restricts prevent OpamFile.OPAM.conflicts >>= (fun conflicts ->
-                  M.return (depends @ conflicts)))
+                  return (depends @ conflicts)))
                 in
                 requires >>= (fun requires ->
-                M.return (Some (RealImpl { context; pkg; opam; requires }))))
-          |> M.return)
+                return (Some (RealImpl { context; pkg; opam; requires }))))
+          |> return)
       in
       impls >>= (fun impls ->
       let impls = m_all impls in
       impls >>= fun impls ->
         let impls = List.filter_map Fun.id impls in
-        M.return { impls; replacement = None })
+        return { impls; replacement = None })
 
   let restrictions dependency = dependency.restrictions
 
@@ -231,15 +231,15 @@ module Make (M : S.MONAD) (Context : S.CONTEXT) = struct
       | `Ensure -> result
       | `Prevent -> not result
 
-  type rejection = Context(M).rejection
+  type rejection = Context.rejection
 
   let rejects role =
     match role with
-    | Virtual _ -> M.return ([], [])
+    | Virtual _ -> return ([], [])
     | Real role ->
       let context = role.context in
       let rejects =
-        let candidates = Context'.candidates context role.name in
+        let candidates = Context.candidates context role.name in
         candidates >>= (fun candidates -> candidates
         |> List.filter_map (function
             | _, Ok _ -> None
@@ -247,11 +247,11 @@ module Make (M : S.MONAD) (Context : S.CONTEXT) = struct
               let pkg = OpamPackage.create role.name version in
               Some (Reject pkg, reason)
           )
-            |> M.return)
+            |> return)
       in
       let notes = [] in
       rejects >>= fun rejects ->
-      M.return (rejects, notes)
+      return (rejects, notes)
 
   let compare_version a b =
     match a, b with
@@ -263,12 +263,12 @@ module Make (M : S.MONAD) (Context : S.CONTEXT) = struct
       -> compare b a
 
   let user_restrictions = function
-    | Virtual _ -> M.return None
+    | Virtual _ -> return None
     | Real role ->
-      let user_restrictions = Context'.user_restrictions role.context role.name in
+      let user_restrictions = Context.user_restrictions role.context role.name in
       user_restrictions >>= (function
-        | None -> M.return None
-        | Some f -> M.return @@ Some { kind = `Ensure; expr = OpamFormula.Atom f })
+        | None -> return None
+        | Some f -> return @@ Some { kind = `Ensure; expr = OpamFormula.Atom f })
 
   let format_machine _impl = "(src)"
 
@@ -289,7 +289,7 @@ module Make (M : S.MONAD) (Context : S.CONTEXT) = struct
     | { kind = `Prevent; expr } -> Fmt.str "not(%s)" (string_of_version_formula expr)
     | { kind = `Ensure; expr } -> string_of_version_formula expr
 
-  let describe_problem _impl = Fmt.to_to_string Context'.pp_rejection
+  let describe_problem _impl = Fmt.to_to_string Context.pp_rejection
 
   let version = function
     | RealImpl impl -> Some impl.pkg

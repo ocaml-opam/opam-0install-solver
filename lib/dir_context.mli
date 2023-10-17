@@ -3,8 +3,8 @@
     It also does not get any opam variables from the environment - instead, the caller
     must provide them explicitly. *)
 
-module Dir_context : functor (M: S.MONAD) -> functor (C: S.CONTEXT) -> sig
-  include module type of C(M)
+module Dir_context (M : S.MONAD) : sig
+  include S.CONTEXT
 
   val std_env :
     ?ocaml_native:bool ->

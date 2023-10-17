@@ -14,11 +14,11 @@
     become a dependency on a virtual package which has each choice as an
     implementation. *)
 
-module Make (M : S.MONAD) (Context : S.CONTEXT) : sig
+module Make (Context : S.CONTEXT) : sig
 
-  include Zeroinstall_solver.S.SOLVER_INPUT with type rejection = Context(M).rejection
+  include Zeroinstall_solver.S.SOLVER_INPUT with type rejection = Context.rejection
 
-  val role : Context(M).t -> OpamPackage.Name.t -> Role.t
+  val role : Context.t -> OpamPackage.Name.t -> Role.t
 
   val version : impl -> OpamPackage.t option
   (** [version impl] is the Opam package for [impl], if any.
@@ -29,7 +29,7 @@ module Make (M : S.MONAD) (Context : S.CONTEXT) : sig
       This is used if the user requests multiple packages on the command line
       (the single [impl] will also be virtual). *)
 
-  val virtual_impl : context:Context(M).t -> depends:OpamPackage.Name.t list -> unit -> impl
+  val virtual_impl : context:Context.t -> depends:OpamPackage.Name.t list -> unit -> impl
   (** [virtual_impl ~context ~depends] is a virtual package which just depends
       on [depends]. This is used if the user requests multiple packages on the
       command line - each requested package becomes a dependency of the virtual

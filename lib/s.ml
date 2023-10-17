@@ -1,5 +1,17 @@
+module type MONAD = sig
+  type 'a t
+
+  val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
+  val return : 'a -> 'a t
+end
+
 module type CONTEXT = sig
   type t
+  module M : sig
+    type 'a t
+    val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
+    val return : 'a -> 'a t
+  end
 
   type rejection
   (** A reason why a package can't be used as input to the solver. e.g. it is
@@ -7,18 +19,18 @@ module type CONTEXT = sig
 
   val pp_rejection : rejection Fmt.t
 
-  val candidates : t -> OpamPackage.Name.t -> (OpamPackage.Version.t * (OpamFile.OPAM.t, rejection) result) list
+  val candidates : t -> OpamPackage.Name.t -> (OpamPackage.Version.t * (OpamFile.OPAM.t, rejection) result) list M.t
   (** [candidates t name] is the list of available versions of [name], in order
       of decreasing preference. If the user or environment provides additional
       constraints that mean a version should be rejected, include that here too. Rejects
       are only used for generating diagnostics reports. Candidates whose "availablity" field
       isn't satisfied must be rejected here. *)
 
-  val user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option
+  val user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option M.t
   (** [user_restrictions t pkg] is the user's constraint on [pkg], if any. This is just
       used for diagnostics; you still have to filter them out yourself in [candidates]. *)
 
-  val filter_deps : t -> OpamPackage.t -> OpamTypes.filtered_formula -> OpamTypes.formula
+  val filter_deps : t -> OpamPackage.t -> OpamTypes.filtered_formula -> OpamTypes.formula M.t
   (** [filter_deps t pkg f] is used to pre-process depends and conflicts.
       [pkg] is the package which has the dependency [f].
       For example, you can use this to filter out dependencies that are only needed on Windows
@@ -32,7 +44,13 @@ module type SOLVER = sig
 
   type diagnostics
 
-  val solve : t -> OpamPackage.Name.t list -> (selections, diagnostics) result
+  module M : sig
+    type 'a t
+    val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
+    val return : 'a -> 'a t
+  end
+
+  val solve : t -> OpamPackage.Name.t list -> (selections, diagnostics) result M.t
   (** [solve t package_names] finds a compatible set of package versions that
       includes all packages in [package_names] and their required dependencies. *)
 

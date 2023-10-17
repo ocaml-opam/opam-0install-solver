@@ -135,6 +135,9 @@ module Make (Context : S.CONTEXT) = struct
     impls : impl list;
   }
 
+  let (>>=) = Context.M.(>>=)
+  let return = Context.M.return
+
   type machine_group = private string   (* We don't use machine groups because opam is source-only. *)
   let machine_group _impl = None
 
@@ -170,32 +173,50 @@ module Make (Context : S.CONTEXT) = struct
         OpamFormula.Atom (name, rlist)
       )
 
+  let rec m_all = function
+    | [] -> return []
+    | [x] -> x >>= fun x -> return [x]
+    | x :: xs ->
+      x >>= fun x ->
+        m_all xs >>= fun xs ->
+          return (x::xs)
+
+
   (* Get all the candidates for a role. *)
   let implementations = function
-    | Virtual (_, impls) -> { impls; replacement = None }
+    | Virtual (_, impls) -> return { impls; replacement = None }
     | Real role ->
       let context = role.context in
       let impls =
         Context.candidates context role.name
-        |> List.filter_map (function
-            | _, Error _rejection -> None
-            | version, Ok opam ->
-              let pkg = OpamPackage.create role.name version in
-              (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
-              let requires =
-                let make_deps importance xform get =
-                  get opam
-                  |> Context.filter_deps context pkg
-                  |> xform
-                  |> list_deps ~context ~importance
+        >>= (fun candidates ->
+          candidates
+          |> List.map (function
+              | _, Error _rejection -> return None
+              | version, Ok opam ->
+                let pkg = OpamPackage.create role.name version in
+                (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
+                let requires =
+                  let make_deps importance xform get =
+                    let deps = get opam |> Context.filter_deps context pkg in
+                    deps >>= (fun deps -> deps
+                    |> xform
+                    |> list_deps ~context ~importance
+                    |> return)
+                  in
+                  make_deps `Essential ensure OpamFile.OPAM.depends >>= (fun depends ->
+                  make_deps `Restricts prevent OpamFile.OPAM.conflicts >>= (fun conflicts ->
+                  return (depends @ conflicts)))
                 in
-                make_deps `Essential ensure OpamFile.OPAM.depends @
-                make_deps `Restricts prevent OpamFile.OPAM.conflicts
-              in
-              Some (RealImpl { context; pkg; opam; requires })
-          )
+                requires >>= (fun requires ->
+                return (Some (RealImpl { context; pkg; opam; requires }))))
+          |> return)
       in
-      { impls; replacement = None }
+      impls >>= (fun impls ->
+      let impls = m_all impls in
+      impls >>= fun impls ->
+        let impls = List.filter_map Fun.id impls in
+        return { impls; replacement = None })
 
   let restrictions dependency = dependency.restrictions
 
@@ -214,20 +235,23 @@ module Make (Context : S.CONTEXT) = struct
 
   let rejects role =
     match role with
-    | Virtual _ -> [], []
+    | Virtual _ -> return ([], [])
     | Real role ->
       let context = role.context in
       let rejects =
-        Context.candidates context role.name
+        let candidates = Context.candidates context role.name in
+        candidates >>= (fun candidates -> candidates
         |> List.filter_map (function
             | _, Ok _ -> None
             | version, Error reason ->
               let pkg = OpamPackage.create role.name version in
               Some (Reject pkg, reason)
           )
+            |> return)
       in
       let notes = [] in
-      rejects, notes
+      rejects >>= fun rejects ->
+      return (rejects, notes)
 
   let compare_version a b =
     match a, b with
@@ -239,11 +263,12 @@ module Make (Context : S.CONTEXT) = struct
       -> compare b a
 
   let user_restrictions = function
-    | Virtual _ -> None
+    | Virtual _ -> return None
     | Real role ->
-      match Context.user_restrictions role.context role.name with
-      | None -> None
-      | Some f -> Some { kind = `Ensure; expr = OpamFormula.Atom f }
+      let user_restrictions = Context.user_restrictions role.context role.name in
+      user_restrictions >>= (function
+        | None -> return None
+        | Some f -> return @@ Some { kind = `Ensure; expr = OpamFormula.Atom f })
 
   let format_machine _impl = "(src)"
 

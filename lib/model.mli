@@ -15,6 +15,7 @@
     implementation. *)
 
 module Make (Context : S.CONTEXT) : sig
+
   include Zeroinstall_solver.S.SOLVER_INPUT with type rejection = Context.rejection
 
   val role : Context.t -> OpamPackage.Name.t -> Role.t

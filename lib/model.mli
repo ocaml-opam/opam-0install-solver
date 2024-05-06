@@ -29,7 +29,7 @@ module Make (Context : S.CONTEXT) : sig
       (the single [impl] will also be virtual). *)
 
   val virtual_impl : context:Context.t -> depends:OpamPackage.Name.t list -> unit -> impl
-  (** [virtual_impl ~context ~depends] is a virtual package which just depends
+  (** [virtual_impl ~context ~depends ()] is a virtual package which just depends
       on [depends]. This is used if the user requests multiple packages on the
       command line - each requested package becomes a dependency of the virtual
       implementation. *)

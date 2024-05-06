@@ -15,7 +15,7 @@ module Make (Context : S.CONTEXT) = struct
 
   type role =
     | Real of real_role               (* A role is usually an opam package name *)
-    | Virtual of int * impl list      (* (int just for sorting) *)
+    | Virtual of < > * impl list      (* (object just for sorting) *)
   and real_impl = {
     context : Context.t;
     pkg : OpamPackage.t;
@@ -57,18 +57,12 @@ module Make (Context : S.CONTEXT) = struct
     let compare a b =
       match a, b with
       | Real a, Real b -> OpamPackage.Name.compare a.name b.name
-      | Virtual (a, _), Virtual (b, _) -> compare (a : int) b
+      | Virtual (a, _), Virtual (b, _) -> compare a b
       | Real _, Virtual _ -> -1
       | Virtual _, Real _ -> 1
   end
 
   let role context name = Real { context; name }
-
-  let fresh_id =
-    let i = ref 0 in
-    fun () ->
-      incr i;
-      !i
 
   let virtual_impl ~context ~depends () =
     let depends = depends |> List.map (fun name ->
@@ -76,10 +70,15 @@ module Make (Context : S.CONTEXT) = struct
         let importance = `Essential in
         { drole; importance; restrictions = []}
       ) in
-    VirtualImpl (fresh_id (), depends)
+    VirtualImpl (-1, depends)
 
   let virtual_role impls =
-    Virtual (fresh_id (), impls)
+    let impls = impls |> List.mapi (fun i -> function
+        | VirtualImpl (_, x) -> VirtualImpl (i, x)
+        | x -> x
+      )
+    in
+    Virtual (object end, impls)
 
   type command = |          (* We don't use 0install commands anywhere *)
   type command_name = private string
@@ -101,7 +100,7 @@ module Make (Context : S.CONTEXT) = struct
   let dummy_impl = Dummy
 
   (* Turn an opam dependency formula into a 0install list of dependencies. *)
-  let list_deps ~context ~importance deps =
+  let list_deps ~context ~importance ~rank deps =
     let open OpamTypes in
     let rec aux = function
       | Empty -> []
@@ -118,7 +117,10 @@ module Make (Context : S.CONTEXT) = struct
         [{ drole; restrictions = []; importance = `Essential }]
     and group_ors = function
       | Or (x, y) -> group_ors x @ group_ors y
-      | expr -> [VirtualImpl (fresh_id (), aux expr)]
+      | expr ->
+        let i = !rank in
+        rank := i + 1;
+        [VirtualImpl (i, aux expr)]
     in
     aux deps
 
@@ -183,11 +185,12 @@ module Make (Context : S.CONTEXT) = struct
               let pkg = OpamPackage.create role.name version in
               (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
               let requires =
+                let rank = ref 0 in
                 let make_deps importance xform get =
                   get opam
                   |> Context.filter_deps context pkg
                   |> xform
-                  |> list_deps ~context ~importance
+                  |> list_deps ~context ~importance ~rank
                 in
                 make_deps `Essential ensure OpamFile.OPAM.depends @
                 make_deps `Restricts prevent OpamFile.OPAM.conflicts

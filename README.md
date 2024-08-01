@@ -1,5 +1,7 @@
 * [API docs][]
 
+**NOTE: opam-0install-cudf has been split off this repository and now resides at [ocaml-opam/opam-0install-cudf](https://github.com/ocaml-opam/opam-0install-cudf)**
+
 # Introduction
 
 Opam's default solver is designed to maintain a set of packages over time,

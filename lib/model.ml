@@ -1,5 +1,3 @@
-(* Note: changes to this file may require similar changes to lib-cudf/model.ml *)
-
 module Make (Context : S.CONTEXT) = struct
   (* Note: [OpamFormula.neg] doesn't work in the [Empty] case, so we just
      record whether to negate the result here. *)

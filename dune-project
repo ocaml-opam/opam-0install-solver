@@ -32,7 +32,7 @@ This package uses 0install's solver algorithm with opam packages.
   (ocaml (>= 4.10.0))
   0install-solver
   (opam-file-format (>= 2.1.1))
-  (opam-client :with-test)
+  (opam-client (and :with-test (< 2.2.0~alpha)))
   (opam-solver :with-test)
   (astring :with-test)
   (alcotest :with-test)))

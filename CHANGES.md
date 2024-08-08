@@ -1,3 +1,13 @@
+v0.4.4 (08/08/2024)
+-------------------
+
+- Remove opam-0install-cudf (split off to its own repository) (@kit-ty-kate #55).
+
+- Avoid non-domain-safe global counter (@talex5 #53).
+
+- Add `--dot` option to output a dependency graph (@talex5 #48).
+
+
 v0.4.3 (28/04/2022)
 -------------------
 

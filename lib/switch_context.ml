@@ -20,7 +20,10 @@ let env t pkg v =
   if List.mem v OpamPackageVar.predefined_depends_variables then None
   else (
     let r = OpamPackageVar.resolve_switch ~package:pkg t.st v in
-    if r = None then OpamConsole.warning "Unknown variable %S" (OpamVariable.Full.to_string v);
+    if r = None then
+      OpamConsole.warning "Unknown variable %S in package %S"
+        (OpamVariable.Full.to_string v)
+        (OpamPackage.to_string pkg);
     r
   )
 

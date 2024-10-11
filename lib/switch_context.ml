@@ -31,7 +31,7 @@ let filter_deps t pkg f =
   let test = OpamPackage.Name.Set.mem (OpamPackage.name pkg) t.test in
   f
   |> OpamFilter.partial_filter_formula (env t pkg)
-  |> OpamFilter.filter_deps ~build:true ~post:true ~test ~doc:false ~dev:false ~default:false
+  |> OpamFilter.filter_deps ~build:true ~post:true ~test ~doc:false ~dev:false ~dev_setup:false ~default:false
 
 let sort_versions t versions =
   if t.prefer_oldest then

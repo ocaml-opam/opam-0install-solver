@@ -27,8 +27,8 @@ let select_zi st spec =
 
 let select_opam st spec =
   let request = OpamSolver.request ~install:spec () in
-  let names = List.map fst spec |> Name.Set.of_list in
-  match OpamSolution.resolve st Install ~orphans:OpamPackage.Set.empty ~requested:names request with
+  let requested = OpamSwitchState.packages_of_atoms st spec in
+  match OpamSolution.resolve st Install ~requested request with
   | Success s -> Ok (OpamSolver.all_packages s)
   | Conflicts c -> Error (lazy (
       OpamCudf.string_of_conflicts st.packages (OpamSwitchState.unavailable_reason st) c

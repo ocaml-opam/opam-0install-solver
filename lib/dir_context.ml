@@ -70,7 +70,7 @@ let filter_deps t pkg f =
   let test = OpamPackage.Name.Set.mem (OpamPackage.name pkg) t.test in
   f
   |> OpamFilter.partial_filter_formula (env t pkg)
-  |> OpamFilter.filter_deps ~build:true ~post:true ~test ~doc:false ~dev ~default:false
+  |> OpamFilter.filter_deps ~build:true ~post:true ~test ~doc:false ~dev ~dev_setup:false ~default:false
 
 let version_compare t v1 v2 =
   if t.prefer_oldest then

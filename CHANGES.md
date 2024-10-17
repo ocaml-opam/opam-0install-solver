@@ -1,5 +1,11 @@
-v0.4.4 (08/08/2024)
--------------------
+## v0.5 (2024-10-17)
+
+- Update to opam 2.2.1 (@talex5 #59).  
+  The opam API changed and it had started failing with `Invalid_argument("filter_deps")`.
+
+- When warning about "Unknown variable", say which package has the error (@talex5 #57).
+
+## v0.4.4 (2024-08-08)
 
 - Remove opam-0install-cudf (split off to its own repository) (@kit-ty-kate #55).
 
@@ -8,8 +14,7 @@ v0.4.4 (08/08/2024)
 - Add `--dot` option to output a dependency graph (@talex5 #48).
 
 
-v0.4.3 (28/04/2022)
--------------------
+## v0.4.3 (2022-04-28)
 
 - Add `?opam_version` to `Dir_context.std_env` (@emillon #36).
   It defaults to the version of opam libraries, but in some cases (e.g.
@@ -26,15 +31,13 @@ v0.4.3 (28/04/2022)
 
 - Fix compiler warnings from new fmt (@talex5 #32).
 
-v0.4.2 (16/06/2021)
--------------------
+## v0.4.2 (2021-06-16)
 
 - opam-0install: Upgrade to opam 2.1.0~rc (@kit-ty-kate #29)
 
 - Upgrade to (lang dune 2.7) (@kit-ty-kate #29)
 
-v0.4.1 (22/04/2021)
--------------------
+## v0.4.1 (2021-04-22)
 
 - opam-0install-cudf: Remove unused (`cmdliner`) and unnecessary (`fmt`) dependencies
   for easier integration with opam.
@@ -42,13 +45,11 @@ v0.4.1 (22/04/2021)
 
 - opam-0install: Be explicit that `Ok` values are not passed to `Term.exit` (@talex5 #24)
 
-v0.4 (09/10/2020)
-----------------
+## v0.4 (2020-10-09)
 
 - opam-0install-cudf: Fix conflict detection (@kit-ty-kate #20)
 
-v0.3 (17/09/2020)
-----------------
+## v0.3 (2020-09-17)
 
 - opam-0install-cudf: Allow to tag packages as recommended when giving them to the solver (@kit-ty-kate #16)
   Recommanded packages might or might not be chosen by the solver depending on whether
@@ -62,8 +63,7 @@ v0.3 (17/09/2020)
 
 - Documentation: Add a link to API docs in the README (@talex5 #14 #17)
 
-v0.2 (17/06/2020)
-----------------
+## v0.2 (2020-06-17)
 
 - Add a new `opam-0install-cudf` package (@kit-ty-kate #11).
   This uses opam's CUDF API, allowing the solver to be used directly from within opam.
@@ -82,7 +82,6 @@ v0.2 (17/06/2020)
   content of the opam file without having to load it twice. We also no longer
   bother loading the opam file for rejects (all we need is the name).
 
-v0.1 (26/05/2020)
-----------------
+## v0.1 (2020-05-26)
 
 Initial release.

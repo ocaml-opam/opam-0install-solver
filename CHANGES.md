@@ -1,3 +1,10 @@
+## v0.5 (2024-10-17)
+
+- Update to opam 2.2.1 (@talex5 #59).  
+  The opam API changed and it had started failing with `Invalid_argument("filter_deps")`.
+
+- When warning about "Unknown variable", say which package has the error (@talex5 #57).
+
 ## v0.4.4 (2024-08-08)
 
 - Remove opam-0install-cudf (split off to its own repository) (@kit-ty-kate #55).

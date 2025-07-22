@@ -7,7 +7,7 @@ let select verbose with_test prefer_oldest graph spec =
     let t0 = Unix.gettimeofday () in
     let root = OpamStateConfig.opamroot () in
     OpamFormatConfig.init ();
-    ignore (OpamStateConfig.load_defaults root);
+    ignore (OpamStateConfig.load_defaults ~lock_kind:`Lock_read root);
     OpamCoreConfig.init ();
     OpamStateConfig.init ();
     OpamGlobalState.with_ `Lock_none @@ fun gt ->

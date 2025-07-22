@@ -1,3 +1,8 @@
+## v0.5.1 (2025-07-22)
+
+- Add `lock_kind` argument to `OpamStateConfig.load_defaults` (@sim642 #63).  
+  opam-state.2.4.0 makes it mandatory.
+
 ## v0.5 (2024-10-17)
 
 - Update to opam 2.2.1 (@talex5 #59).  

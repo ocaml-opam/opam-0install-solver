@@ -1,3 +1,7 @@
+## v0.6.0 (2026-05-05)
+
+- Support cmdliner.2.0.0 and higher (@patricoferris #65, fixes #62)
+
 ## v0.5.1 (2025-07-22)
 
 - Add `lock_kind` argument to `OpamStateConfig.load_defaults` (@sim642 #63).  

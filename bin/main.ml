@@ -71,14 +71,14 @@ let atom =
       let sop = if sop = "." then "=" else sop in
       let op = OpamLexer.FullPos.relop sop in
       let version = OpamPackage.Version.of_string sversion in
-      `Ok (name, Some (op, version))
+      Ok (name, Some (op, version))
     with Not_found | Failure _ | OpamLexer.Error _ ->
-    try `Ok (OpamPackage.Name.of_string str, None)
-    with Failure msg -> `Error msg
+    try Ok (OpamPackage.Name.of_string str, None)
+    with Failure msg -> Error (`Msg msg)
   in
   let print ppf atom =
     Fmt.string ppf (OpamFormula.short_string_of_atom atom) in
-  parse, print
+  Arg.conv (parse, print)
 
 let spec =
   Arg.pos_all atom [] @@ Arg.info []
